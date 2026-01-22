@@ -1,9 +1,18 @@
 from pathlib import Path
 
 import download_data
+import synthesize_data
 
-DATASET_PATH = Path("raw_dataset")
+RAW_DATASET_PATH = Path("raw_dataset")
+RAW_DATASET_PATH.mkdir(parents=True, exist_ok=True)
+
+download_data.download_esc50(RAW_DATASET_PATH)
+download_data.download_fsd50k(RAW_DATASET_PATH)
+
+DATASET_PATH = Path("dataset")
 DATASET_PATH.mkdir(parents=True, exist_ok=True)
 
-download_data.download_esc50(DATASET_PATH)
-download_data.download_fsd50k(DATASET_PATH)
+# todo
+
+download_data.get_audio_list_by_category(category="")
+# synthesize_data.synthesize_soundscape()

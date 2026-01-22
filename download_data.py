@@ -3,6 +3,8 @@ import shutil
 import tempfile
 import urllib.request
 import zipfile
+from typing import Optional
+
 from huggingface_hub import snapshot_download, hf_hub_download
 
 
@@ -73,3 +75,16 @@ def download_esc50(dataset: Path):
             raise FileNotFoundError(f"Missing metadata file: {src_csv}")
         shutil.move(str(src_audio), str(target_dev))
         shutil.copy2(src_csv, target_root / "esc50.csv")
+
+
+def get_audio_list_by_category(dataset: Optional[str], category: str) -> list[str]:
+    """
+    Args:
+        category: sound class name, e.g. 'dog', 'speech'
+        dataset: optional dataset name, e.g. 'FSD50K';
+                 if None, search across all datasets
+    Returns:
+        list of audio file paths (strings)
+    """
+    # todo
+    pass
