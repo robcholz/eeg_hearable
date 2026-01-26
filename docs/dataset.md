@@ -4,7 +4,7 @@
 
 FSD50K: general sound
 ESC-50: environment sound
-MUSDB: music & voice
+MUSDB18: music & voice
 DISCO: noise
 
 ## random spatial direction
