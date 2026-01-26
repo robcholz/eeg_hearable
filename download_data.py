@@ -1,8 +1,8 @@
 from pathlib import Path
 import csv
 import shutil
+import subprocess
 import tempfile
-import urllib.request
 import zipfile
 import unittest
 from typing import Optional
@@ -83,6 +83,63 @@ def download_esc50(dataset: Path):
         shutil.copy2(src_csv, target_root / "esc50.csv")
 
 
+def download_disco(dataset: Path):
+    print("Start downloading DISCO")
+    # todo
+    pass
+
+
+def postprocess_musdb18(dataset: Path):
+    """
+    Split each stem file into its five constituent audio tracks and place them under
+    `musdb18/audio/<track>/<song_name>.wav`.
+
+    Args:
+        dataset: Root path containing the already downloaded `musdb18` folder.
+    """
+
+    target_root = dataset / "musdb18"
+    train_dataset = target_root / "train"
+    test_dataset = target_root / "test"
+
+    audio_base = target_root / "audio"
+    track_names = ["mixture", "drum", "bass", "rest", "vocal"]
+    track_dirs = {name: audio_base / name for name in track_names}
+    for track_dir in track_dirs.values():
+        track_dir.mkdir(parents=True, exist_ok=True)
+
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if ffmpeg_bin is None:
+        raise RuntimeError("ffmpeg binary is required to postprocess musdb18 but was not found in PATH")
+
+    for split_dir in (train_dataset, test_dataset):
+        if not split_dir.exists():
+            continue
+        for stem_path in sorted(split_dir.glob("*.stem.mp4")):
+            stem_name = stem_path.name
+            song_name = stem_name[: -len(".stem.mp4")] if stem_name.endswith(".stem.mp4") else stem_path.stem
+            for idx, track in enumerate(track_names):
+                output_path = track_dirs[track] / f"{song_name}.wav"
+                if output_path.exists():
+                    continue
+                subprocess.run(
+                    [
+                        ffmpeg_bin,
+                        "-y",
+                        "-i",
+                        str(stem_path),
+                        "-map",
+                        f"0:a:{idx}",
+                        "-c:a",
+                        "pcm_s16le",
+                        "-ar",
+                        "44100",
+                        str(output_path),
+                    ],
+                    check=True,
+                )
+
+
 def download_musdb18(dataset: Path):
     print("Start downloading musdb18")
     # download from https://zenodo.org/records/1117372/files/musdb18.zip?download=1
@@ -142,6 +199,42 @@ def download_musdb18(dataset: Path):
             shutil.move(str(item), str(target_root))
     finally:
         tmpdir_obj.cleanup()
+
+    postprocess_musdb18(dataset)
+
+
+def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str]:
+    """
+    Return the available audio categories for ESC-50.
+
+    Args:
+        dataset_path: The directory containing the downloaded datasets.
+        dataset: Optional dataset name (default ESC-50). When provided it must be 'esc50'.
+
+    Returns:
+        A sorted list of the unique categories declared in ESC-50 metadata.
+    """
+
+    # todo support dataset=fsd50k
+    # todo support dataset=musdb18
+    # todo support dataset=disco
+    dataset_name = (dataset or "esc50").strip().lower()
+    if dataset_name != "esc50":
+        raise ValueError("Only esc50 is supported by get_audio_categories right now")
+
+    metadata_path = dataset_path / "esc50" / "esc50.csv"
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Missing ESC-50 metadata: {metadata_path}")
+
+    categories = set()
+    with metadata_path.open(newline="") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            value = row.get("category", "").strip()
+            if value:
+                categories.add(value)
+
+    return sorted(categories)
 
 
 def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], category: str) -> list[str]:
@@ -209,6 +302,43 @@ class _DownloadDataTests(unittest.TestCase):
 
             result = get_audio_list_by_category(dataset_path, "esc50", "Dog")
             self.assertEqual([str(dev_dir / rows[0][0])], result)
+
+    def test_get_audio_categories_esc50(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset_path = Path(tmpdir)
+            esc50_root = dataset_path / "esc50"
+            esc50_root.mkdir(parents=True, exist_ok=True)
+            metadata_path = esc50_root / "esc50.csv"
+            fieldnames = ["filename", "fold", "target", "category", "esc10", "src_file", "take"]
+            rows = [
+                ("1-100032-A-0.wav", "1", "0", "dog", "True", "100032", "A"),
+                ("1-100038-A-14.wav", "1", "14", "chirping_birds", "False", "100038", "A"),
+            ]
+            with metadata_path.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerows(rows)
+
+            categories = get_audio_categories(dataset_path, "esc50")
+            self.assertEqual(["chirping_birds", "dog"], categories)
+
+    def test_get_audio_categories_default_dataset(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset_path = Path(tmpdir)
+            esc50_root = dataset_path / "esc50"
+            esc50_root.mkdir(parents=True, exist_ok=True)
+            metadata_path = esc50_root / "esc50.csv"
+            fieldnames = ["filename", "fold", "target", "category", "esc10", "src_file", "take"]
+            rows = [
+                ("1-100032-A-0.wav", "1", "0", "dog", "True", "100032", "A"),
+            ]
+            with metadata_path.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerows(rows)
+
+            categories = get_audio_categories(dataset_path, None)
+            self.assertEqual(["dog"], categories)
 
 
 if __name__ == "__main__":
