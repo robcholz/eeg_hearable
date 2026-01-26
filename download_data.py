@@ -7,7 +7,8 @@ import zipfile
 import unittest
 from typing import Optional
 
-from huggingface_hub import snapshot_download, hf_hub_download
+from huggingface_hub import hf_hub_download
+from huggingface_hub.errors import HfHubHTTPError
 
 from utils import download_with_progress
 
@@ -29,28 +30,70 @@ def download_fsd50k(dataset: Path):
     eval_labels_path = hf_hub_download(
         repo_id=repo_id, filename="labels/eval.csv", repo_type="dataset"
     )
-    shutil.copy2(dev_labels_path, target_root / "dev.csv")
-    shutil.copy2(eval_labels_path, target_root / "eval.csv")
+    target_dev_csv = target_root / "dev.csv"
+    target_eval_csv = target_root / "eval.csv"
+    shutil.copy2(dev_labels_path, target_dev_csv)
+    shutil.copy2(eval_labels_path, target_eval_csv)
 
-    snapshot_download(repo_id=repo_id, repo_type="dataset", local_dir=output_dir,
-                      allow_patterns=[f"{dev_path}/**", f"{eval_path}/**"], )
     target_dev = target_root / "dev"
     target_eval = target_root / "eval"
 
-    if target_dev.exists():
-        raise FileExistsError(f"Target already exists: {target_dev}")
-    if target_eval.exists():
-        raise FileExistsError(f"Target already exists: {target_eval}")
+    def _expected_paths(base: Path, fname: str) -> list[Path]:
+        return [base / fname, base / f"{fname}.wav"]
 
-    src_dev = output_dir / dev_path
-    src_eval = output_dir / eval_path
-    if src_dev.exists():
-        shutil.move(str(src_dev), str(target_root))
-    if src_eval.exists():
-        shutil.move(str(src_eval), str(target_root))
-    clips_dir = output_dir / "clips"
-    if clips_dir.exists() and not any(clips_dir.iterdir()):
-        clips_dir.rmdir()
+    def _missing_files(audio_dir: Path, csv_path: Path) -> list[str]:
+        missing = []
+        if not csv_path.exists():
+            return missing
+        with csv_path.open(newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                fname = row["fname"]
+                if not any(p.exists() for p in _expected_paths(audio_dir, fname)):
+                    missing.append(fname)
+        return missing
+
+    dev_missing = _missing_files(target_dev, target_dev_csv)
+    eval_missing = _missing_files(target_eval, target_eval_csv)
+    if not dev_missing and not eval_missing:
+        print(f"FSD50K already complete at {target_root}")
+        return
+    if dev_missing:
+        print(f"FSD50K dev missing {len(dev_missing)} files, e.g. {dev_missing[:5]}")
+    if eval_missing:
+        print(f"FSD50K eval missing {len(eval_missing)} files, e.g. {eval_missing[:5]}")
+
+    def _download_missing_files(missing: list[str], split_path: str, target_dir: Path) -> None:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for fname in missing:
+            filename = f"{split_path}/{fname}.wav"
+            try:
+                src_path = hf_hub_download(
+                    repo_id=repo_id,
+                    filename=filename,
+                    repo_type="dataset",
+                    local_dir=output_dir,
+                )
+            except HfHubHTTPError as exc:
+                status = getattr(exc, "status_code", None)
+                if status == 429:
+                    print("Rate limited downloading FSD50K; please rerun later.")
+                raise
+            dest_path = target_dir / f"{fname}.wav"
+            if not dest_path.exists():
+                shutil.copy2(src_path, dest_path)
+
+    if dev_missing:
+        _download_missing_files(dev_missing, dev_path, target_dev)
+    if eval_missing:
+        _download_missing_files(eval_missing, eval_path, target_eval)
+
+    dev_missing = _missing_files(target_dev, target_dev_csv)
+    eval_missing = _missing_files(target_eval, target_eval_csv)
+    if dev_missing or eval_missing:
+        raise RuntimeError(
+            f"FSD50K download completed but not all files found (dev missing {len(dev_missing)}, eval missing {len(eval_missing)})."
+        )
 
 
 def download_esc50(dataset: Path):
@@ -83,13 +126,66 @@ def download_esc50(dataset: Path):
         shutil.copy2(src_csv, target_root / "esc50.csv")
 
 
-def download_disco(dataset: Path):
-    print("Start downloading DISCO")
-    # todo
-    pass
+def _download_from_zenodo(dataset: Path, dataset_name: str, zip_filename: str, link: str):
+    target_root = dataset / dataset_name
+    repo_zip_url = link
+    output_dir = Path("cache")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = output_dir / zip_filename
+
+    def download_zip(force: bool = False):
+        if force and zip_path.exists():
+            zip_path.unlink()
+        if not zip_path.exists():
+            download_with_progress(repo_zip_url, zip_path)
+
+    if zip_path.exists() and not zipfile.is_zipfile(zip_path):
+        zip_path.unlink()
+    download_zip()
+
+    target_root.mkdir(parents=True, exist_ok=True)
+    if any(target_root.iterdir()):
+        print(f"Target already exists: {target_root}")
+        return
+
+    tmpdir_obj = None
+    for attempt in range(2):
+        tmpdir_obj = tempfile.TemporaryDirectory()
+        try:
+            with zipfile.ZipFile(zip_path) as zf:
+                zf.extractall(tmpdir_obj.name)
+            break
+        except zipfile.BadZipFile:
+            tmpdir_obj.cleanup()
+            tmpdir_obj = None
+            download_zip(force=True)
+            if attempt == 1:
+                raise
+
+    if tmpdir_obj is None:
+        raise RuntimeError("Failed to extract musdb18 archive")
+
+    try:
+        extracted_root = Path(tmpdir_obj.name)
+        src_root = extracted_root / dataset_name
+        if not src_root.exists():
+            entries = [p for p in extracted_root.iterdir()]
+            if len(entries) == 1 and entries[0].is_dir():
+                candidate = entries[0] / dataset_name
+                src_root = candidate if candidate.exists() else entries[0]
+            else:
+                src_root = extracted_root
+
+        if not src_root.exists():
+            raise FileNotFoundError(f"Missing extracted data in: {extracted_root}")
+
+        for item in src_root.iterdir():
+            shutil.move(str(item), str(target_root))
+    finally:
+        tmpdir_obj.cleanup()
 
 
-def postprocess_musdb18(dataset: Path):
+def _postprocess_musdb18(dataset: Path):
     """
     Split each stem file into its five constituent audio tracks and place them under
     `musdb18/audio/<track>/<song_name>.wav`.
@@ -141,67 +237,17 @@ def postprocess_musdb18(dataset: Path):
                 )
 
 
+def download_disco(dataset: Path):
+    print("Start downloading DISCO")
+    link = "https://zenodo.org/records/4019030/files/disco_noises.zip?download=1"
+    _download_from_zenodo(dataset, "disco", "disco_noises.zip", link)
+
+
 def download_musdb18(dataset: Path):
     print("Start downloading musdb18")
-    # download from https://zenodo.org/records/1117372/files/musdb18.zip?download=1
-    target_root = dataset / "musdb18"
-    repo_zip_url = "https://zenodo.org/records/1117372/files/musdb18.zip?download=1"
-    output_dir = Path("cache")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    zip_path = output_dir / "musdb18.zip"
-
-    def download_zip(force: bool = False):
-        if force and zip_path.exists():
-            zip_path.unlink()
-        if not zip_path.exists():
-            download_with_progress(repo_zip_url, zip_path)
-
-    if zip_path.exists() and not zipfile.is_zipfile(zip_path):
-        zip_path.unlink()
-    download_zip()
-
-    target_root.mkdir(parents=True, exist_ok=True)
-    if any(target_root.iterdir()):
-        print(f"Target already exists: {target_root}")
-        return
-
-    tmpdir_obj = None
-    for attempt in range(2):
-        tmpdir_obj = tempfile.TemporaryDirectory()
-        try:
-            with zipfile.ZipFile(zip_path) as zf:
-                zf.extractall(tmpdir_obj.name)
-            break
-        except zipfile.BadZipFile:
-            tmpdir_obj.cleanup()
-            tmpdir_obj = None
-            download_zip(force=True)
-            if attempt == 1:
-                raise
-
-    if tmpdir_obj is None:
-        raise RuntimeError("Failed to extract musdb18 archive")
-
-    try:
-        extracted_root = Path(tmpdir_obj.name)
-        src_root = extracted_root / "musdb18"
-        if not src_root.exists():
-            entries = [p for p in extracted_root.iterdir()]
-            if len(entries) == 1 and entries[0].is_dir():
-                candidate = entries[0] / "musdb18"
-                src_root = candidate if candidate.exists() else entries[0]
-            else:
-                src_root = extracted_root
-
-        if not src_root.exists():
-            raise FileNotFoundError(f"Missing extracted data in: {extracted_root}")
-
-        for item in src_root.iterdir():
-            shutil.move(str(item), str(target_root))
-    finally:
-        tmpdir_obj.cleanup()
-
-    postprocess_musdb18(dataset)
+    link = "https://zenodo.org/records/1117372/files/musdb18.zip?download=1"
+    _download_from_zenodo(dataset, "musdb18", "musdb18.zip", link)
+    _postprocess_musdb18(dataset)
 
 
 def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str]:
