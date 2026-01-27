@@ -432,7 +432,3 @@ def get_all_dataset_name() -> list[str]:
         list of all dataset names
     """
     return download_data.get_all_dataset_name()
-
-
-if __name__ == "__main__":
-    print(get_audio_list_by_category(Path("raw_dataset"), None, "animal"))
