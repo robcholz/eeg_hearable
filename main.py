@@ -19,9 +19,9 @@ def print_all_dataset_info(dataset_path: Path):
     print('Dataset info:')
     for dataset_name in rawdata_accessor.get_all_dataset_name():
         dataset_size = 0
-        for label in rawdata_accessor.get_audio_labels(RAW_DATASET_PATH, dataset_name):
+        for label in rawdata_accessor.get_audio_labels(dataset_path, dataset_name):
             dataset_size += len(
-                rawdata_accessor.get_audio_list_by_label(RAW_DATASET_PATH, dataset=dataset_name, label=label))
+                rawdata_accessor.get_audio_list_by_label(dataset_path, dataset=dataset_name, label=label))
         print(f'{dataset_name}: {dataset_size} files')
         total += dataset_size
     print('Total files: ', total)
