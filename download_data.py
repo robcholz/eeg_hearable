@@ -262,8 +262,6 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
         A sorted list of categories available for the requested dataset(s).
     """
 
-    # todo support dataset=fsd50k
-
     def _esc50_categories() -> list[str]:
         metadata_path = dataset_path / "esc50" / "esc50.csv"
         if not metadata_path.exists():
@@ -297,11 +295,31 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
                     categories.add(entry.name)
         return sorted(categories)
 
+    def _fsd50k_categories() -> list[str]:
+        dev_csv = dataset_path / "fsd50k" / "dev.csv"
+        eval_csv = dataset_path / "fsd50k" / "eval.csv"
+        if not dev_csv.exists() and not eval_csv.exists():
+            raise FileNotFoundError("Missing FSD50K dev/eval metadata CSVs")
+        categories = set()
+        for csv_path in (dev_csv, eval_csv):
+            if not csv_path.exists():
+                continue
+            with csv_path.open(newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    labels = row.get("labels", "")
+                    for label in labels.split(","):
+                        label = label.strip()
+                        if label:
+                            categories.add(label)
+        return sorted(categories)
+
     dataset_name = dataset.strip().lower() if dataset else None
     if dataset_name is None:
         combined = set(_esc50_categories())
         combined.update(_musdb_categories())
         combined.update(_disco_categories())
+        combined.update(_fsd50k_categories())
         return sorted(combined)
 
     if dataset_name == "esc50":
@@ -313,7 +331,10 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
     if dataset_name == "disco":
         return _disco_categories()
 
-    raise ValueError("Only esc50, musdb18, and disco are supported by get_audio_categories right now")
+    if dataset_name == "fsd50k":
+        return _fsd50k_categories()
+
+    raise ValueError("Only esc50, musdb18, disco, and fsd50k are supported by get_audio_categories right now")
 
 
 def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], category: str) -> list[str]:
@@ -327,11 +348,26 @@ def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], categ
         list of audio file paths (strings)
     """
 
-    # todo support dataset=fsd50k
     if not category or not category.strip():
         raise ValueError("category must be specified")
 
     normalized_category = category.strip().lower()
+
+    def _fsd50k_matches(label: str, csv_path: Path, audio_dir: Path) -> list[str]:
+        if not csv_path.exists() or not audio_dir.exists():
+            return []
+        matches = []
+        with csv_path.open(newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                labels = row.get("labels", "")
+                if label in [l.strip().lower() for l in labels.split(",") if l.strip()]:
+                    fname = row["fname"]
+                    candidate = audio_dir / fname
+                    candidate_wav = audio_dir / f"{fname}.wav"
+                    matches.append(str(candidate_wav if candidate_wav.exists() else candidate))
+        return matches
+
     dataset_name = dataset.strip().lower() if dataset else None
     if dataset_name is None:
         results: list[str] = []
@@ -356,6 +392,14 @@ def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], categ
         for root in (disco_train, disco_test):
             if root.exists():
                 results.extend(str(p) for p in root.iterdir() if p.is_file())
+        # FSD50K
+        fsd_root = dataset_path / "fsd50k"
+        dev_csv = fsd_root / "dev.csv"
+        eval_csv = fsd_root / "eval.csv"
+        dev_dir = fsd_root / "dev"
+        eval_dir = fsd_root / "eval"
+        results.extend(_fsd50k_matches(normalized_category, dev_csv, dev_dir))
+        results.extend(_fsd50k_matches(normalized_category, eval_csv, eval_dir))
         return sorted(results)
 
     if dataset_name == "esc50":
@@ -396,7 +440,19 @@ def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], categ
                 results.extend(str(p) for p in root.iterdir() if p.is_file())
         return sorted(results)
 
-    raise ValueError("Only esc50, musdb18, and disco are supported by get_audio_list_by_category right now")
+    if dataset_name == "fsd50k":
+        fsd_root = dataset_path / "fsd50k"
+        dev_csv = fsd_root / "dev.csv"
+        eval_csv = fsd_root / "eval.csv"
+        dev_dir = fsd_root / "dev"
+        eval_dir = fsd_root / "eval"
+        if not dev_csv.exists() and not eval_csv.exists():
+            raise FileNotFoundError("Missing FSD50K dev/eval metadata CSVs")
+        results = _fsd50k_matches(normalized_category, dev_csv, dev_dir)
+        results.extend(_fsd50k_matches(normalized_category, eval_csv, eval_dir))
+        return sorted(results)
+
+    raise ValueError("Only esc50, musdb18, disco, and fsd50k are supported by get_audio_list_by_category right now")
 
 
 class _DownloadDataTests(unittest.TestCase):
@@ -464,8 +520,22 @@ class _DownloadDataTests(unittest.TestCase):
 
             (dataset_path / "disco" / "train" / "piano").mkdir(parents=True, exist_ok=True)
 
+            fsd_root = dataset_path / "fsd50k"
+            fsd_root.mkdir(parents=True, exist_ok=True)
+            dev_csv = fsd_root / "dev.csv"
+            eval_csv = fsd_root / "eval.csv"
+            fieldnames = ["fname", "labels", "mids", "split"]
+            with dev_csv.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerow(["1", "cat,dog", "/m/0,/m/1", "train"])
+            with eval_csv.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerow(["2", "dog,bird", "/m/1,/m/2", "eval"])
+
             categories = get_audio_categories(dataset_path, None)
-            self.assertEqual(["audio-bass", "audio-drum", "dog", "piano"], categories)
+            self.assertEqual(["audio-bass", "audio-drum", "bird", "cat", "dog", "piano"], categories)
 
     def test_get_audio_categories_musdb18(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -476,6 +546,26 @@ class _DownloadDataTests(unittest.TestCase):
 
             result = get_audio_categories(dataset_path, "musdb18")
             self.assertEqual(["audio-bass", "audio-drum", "audio-mixture"], result)
+
+    def test_get_audio_categories_fsd50k(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset_path = Path(tmpdir)
+            fsd_root = dataset_path / "fsd50k"
+            fsd_root.mkdir(parents=True, exist_ok=True)
+            dev_csv = fsd_root / "dev.csv"
+            eval_csv = fsd_root / "eval.csv"
+            fieldnames = ["fname", "labels", "mids", "split"]
+            with dev_csv.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerow(["1", "cat,dog", "/m/0,/m/1", "train"])
+            with eval_csv.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerow(["2", "dog,bird", "/m/1,/m/2", "eval"])
+
+            categories = get_audio_categories(dataset_path, "fsd50k")
+            self.assertEqual(["bird", "cat", "dog"], categories)
 
     def test_get_audio_list_by_category_musdb18(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -547,6 +637,32 @@ class _DownloadDataTests(unittest.TestCase):
 
             result_disco = get_audio_list_by_category(dataset_path, None, "guitar")
             self.assertEqual([str(disco_dir / "train_a.wav")], result_disco)
+
+    def test_get_audio_list_by_category_fsd50k(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset_path = Path(tmpdir)
+            fsd_root = dataset_path / "fsd50k"
+            dev_dir = fsd_root / "dev"
+            eval_dir = fsd_root / "eval"
+            dev_dir.mkdir(parents=True, exist_ok=True)
+            eval_dir.mkdir(parents=True, exist_ok=True)
+            (dev_dir / "1.wav").write_text("data")
+            (eval_dir / "2.wav").write_text("data")
+            fieldnames = ["fname", "labels", "mids", "split"]
+            dev_csv = fsd_root / "dev.csv"
+            eval_csv = fsd_root / "eval.csv"
+            with dev_csv.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerow(["1", "cat,dog", "/m/0,/m/1", "train"])
+            with eval_csv.open("w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(fieldnames)
+                writer.writerow(["2", "dog,bird", "/m/1,/m/2", "eval"])
+
+            result = get_audio_list_by_category(dataset_path, "fsd50k", "dog")
+            expected = sorted(str(p) for p in [dev_dir / "1.wav", eval_dir / "2.wav"])
+            self.assertEqual(expected, result)
 
 
 if __name__ == "__main__":
