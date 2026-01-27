@@ -16,5 +16,5 @@ DATASET_PATH.mkdir(parents=True, exist_ok=True)
 
 # todo
 
-# download_data.get_audio_list_by_category(RAW_DATASET_PATH, dataset="esc50", category="dog")
+# rawdata_accessor.get_audio_list_by_category(RAW_DATASET_PATH, dataset="esc50", category="dog")
 # synthesize_data.synthesize_soundscape()

@@ -455,6 +455,14 @@ def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], categ
     raise ValueError("Only esc50, musdb18, disco, and fsd50k are supported by get_audio_list_by_category right now")
 
 
+def get_all_dataset_name() -> list[str]:
+    """
+    Returns:
+        list of all dataset names
+    """
+    return ["esc50", "musdb18", "disco", "fsd50k"]
+
+
 class _DownloadDataTests(unittest.TestCase):
     def test_get_audio_list_by_category_esc50(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -666,4 +674,5 @@ class _DownloadDataTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    print(get_audio_categories(Path("raw_dataset"), None))
+    # unittest.main()
