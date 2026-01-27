@@ -363,7 +363,7 @@ def _ensure_maps(dataset_path: Path) -> None:
         _OPTIMIZED_MAP[label] = pairs
 
 
-def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str]:
+def get_audio_labels(dataset_path: Path, dataset: Optional[str]) -> list[str]:
     """
     Return the available audio categories for supported datasets.
 
@@ -372,15 +372,15 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
         dataset: Optional dataset name. When None, all supported datasets are aggregated.
 
     Returns:
-        A sorted list of categories available for the requested dataset(s).
+        A sorted list of labels available for the requested dataset(s).
     """
     _ensure_maps(dataset_path)
     if not _ORIGINAL_MAP:
         return []
 
-    if not hasattr(get_audio_categories, "_cache"):
-        get_audio_categories._cache = {}
-    cache: Dict[Optional[str], List[str]] = get_audio_categories._cache
+    if not hasattr(get_audio_labels, "_cache"):
+        get_audio_labels._cache = {}
+    cache: Dict[Optional[str], List[str]] = get_audio_labels._cache
     cache_key = dataset.strip().lower() if dataset else None
     if cache_key in cache:
         return cache[cache_key]
@@ -400,11 +400,11 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
     return result
 
 
-def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], category: str) -> list[str]:
+def get_audio_list_by_label(dataset_path: Path, dataset: Optional[str], label: str) -> list[str]:
     """
     Args:
         dataset_path: the path to the dataset dir
-        category: sound class name
+        label: sound class name
         dataset: optional dataset name, if None, search across all datasets
     Returns:
         list of audio file paths (strings)
@@ -413,7 +413,7 @@ def get_audio_list_by_category(dataset_path: Path, dataset: Optional[str], categ
     if not _ORIGINAL_MAP:
         return []
 
-    label = category.strip()
+    label = label.strip()
     if label not in _ORIGINAL_MAP:
         raise ValueError(f"Unknown label: {label}")
 

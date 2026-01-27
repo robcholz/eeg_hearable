@@ -56,7 +56,7 @@ def download_fsd50k(dataset: Path):
     dev_missing = _missing_files(target_dev, target_dev_csv)
     eval_missing = _missing_files(target_eval, target_eval_csv)
     if not dev_missing and not eval_missing:
-        print(f"FSD50K already complete at {target_root}")
+        print(f"FSD50K already exists: {target_root}")
         return
     if dev_missing:
         print(f"FSD50K dev missing {len(dev_missing)} files, e.g. {dev_missing[:5]}")
