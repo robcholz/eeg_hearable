@@ -46,12 +46,16 @@ def print_all_label_info(dataset_path: Path):
     print('Total files:', total_count)
 
 
-print('\n')
-print_all_dataset_info(RAW_DATASET_PATH)
-print('\n')
-print_all_label_info(RAW_DATASET_PATH)
+def main():
+    print('\n')
+    print_all_dataset_info(RAW_DATASET_PATH)
+    print('\n')
+    print_all_label_info(RAW_DATASET_PATH)
 
-DATASET_PATH = Path("output_dataset")
-DATASET_PATH.mkdir(parents=True, exist_ok=True)
+    dataset_path = Path("output_dataset")
+    dataset_path.mkdir(parents=True, exist_ok=True)
+    # synthesize_data.synthesize_soundscape()
 
-# synthesize_data.synthesize_soundscape()
+
+if __name__ == '__main__':
+    main()

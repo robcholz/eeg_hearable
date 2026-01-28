@@ -1,6 +1,4 @@
-name: eeg_hearable
-channels:
-  - defaults
+name: base
 dependencies:
   - python=3.13.11=hcf712cf_100_cp313
   - fsspec=2026.1.0=py313h7040dfc_0
