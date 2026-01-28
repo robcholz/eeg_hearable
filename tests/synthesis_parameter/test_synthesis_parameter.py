@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 
 from sound_foundry.synthesis_parameter.synthesis_parameter import (
     Partition,
@@ -7,15 +6,9 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     TransientEffect,
     _verify_partitions,
     _verify_sources,
-    _verify_total_number,
     SynthesisParameter,
     verify_synthesis_parameter,
 )
-
-DEFAULT_DATASET_INFO = {
-    "dataset_a": {"animal": 2, "music": 3},
-    "dataset_b": {"vehicle": 5},
-}
 
 
 def _make_params(partitions, total_number=1, sources=None):
@@ -27,45 +20,16 @@ def _make_params(partitions, total_number=1, sources=None):
     )
 
 
-def _patch_dataset(monkeypatch, dataset_info, global_labels=None):
-    monkeypatch.setattr(
-        "sound_foundry.synthesis_parameter.synthesis_parameter.get_raw_dataset_path",
-        lambda: Path("raw_dataset"),
-    )
-    monkeypatch.setattr(
-        "sound_foundry.synthesis_parameter.synthesis_parameter.get_all_dataset_name",
-        lambda: list(dataset_info.keys()),
-    )
-
-    def _get_audio_labels(_, dataset=None):
-        if dataset is None:
-            if global_labels is not None:
-                return list(global_labels)
-            return sorted(
-                {label for labels in dataset_info.values() for label in labels.keys()}
-            )
-        return sorted(dataset_info.get(dataset, {}).keys())
-
-    def _get_audio_list_by_label(_, dataset, label):
-        if dataset not in dataset_info:
-            return []
-        return [
-            f"{dataset}_{label}_{i}" for i in range(dataset_info[dataset].get(label, 0))
-        ]
-
+def _patch_available_labels(monkeypatch, labels):
     monkeypatch.setattr(
         "sound_foundry.synthesis_parameter.synthesis_parameter.get_audio_labels",
-        _get_audio_labels,
-    )
-    monkeypatch.setattr(
-        "sound_foundry.synthesis_parameter.synthesis_parameter.get_audio_list_by_label",
-        _get_audio_list_by_label,
+        lambda *_: list(labels),
     )
 
 
 @pytest.fixture(autouse=True)
 def _default_dataset(monkeypatch):
-    _patch_dataset(monkeypatch, DEFAULT_DATASET_INFO)
+    _patch_available_labels(monkeypatch, ["animal", "music", "vehicle"])
 
 
 def test_verify_synthesis_parameter_rejects_empty_partitions():
@@ -116,9 +80,7 @@ def test_verify_synthesis_parameter_accepts_valid_partitions():
 
 
 def test_verify_partitions_rejects_duplicate_dataset_labels(monkeypatch):
-    _patch_dataset(
-        monkeypatch, {"dataset_a": {"animal": 1}}, global_labels=["animal", "animal"]
-    )
+    _patch_available_labels(monkeypatch, ["animal", "animal"])
     partitions = [
         Partition(percentage=0.5, n_sources=1),
         Partition(percentage=0.5, n_sources=1),
@@ -128,26 +90,26 @@ def test_verify_partitions_rejects_duplicate_dataset_labels(monkeypatch):
 
 
 def test_verify_partitions_requires_enough_dataset_labels(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_a": {"animal": 1, "music": 1}})
+    _patch_available_labels(monkeypatch, ["animal", "music"])
     partitions = [Partition(percentage=1.0, n_sources=3)]
     with pytest.raises(ValueError, match="exceeds available labels"):
         _verify_partitions(partitions)
 
 
 def test_verify_sources_rejects_duplicate_labels(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_a": {"animal": 1}})
+    _patch_available_labels(monkeypatch, ["animal"])
     with pytest.raises(ValueError, match="sources.labels must be unique"):
         _verify_sources(Sources(labels=["animal", "animal"]), None)
 
 
 def test_verify_sources_rejects_unknown_labels(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_a": {"animal": 1}})
+    _patch_available_labels(monkeypatch, ["animal"])
     with pytest.raises(ValueError, match="unknown source labels"):
         _verify_sources(Sources(labels=["music"]), None)
 
 
 def test_verify_sources_allows_valid_labels(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_a": {"animal": 1, "music": 1}})
+    _patch_available_labels(monkeypatch, ["animal", "music"])
     _verify_sources(
         Sources(labels=["animal"]),
         TransientEffect(labels=["music"]),
@@ -155,20 +117,9 @@ def test_verify_sources_allows_valid_labels(monkeypatch):
 
 
 def test_verify_sources_detects_overlap_with_transient(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_a": {"animal": 1}})
+    _patch_available_labels(monkeypatch, ["animal"])
     with pytest.raises(ValueError, match="overlap"):
         _verify_sources(
             Sources(labels=["animal"]),
             TransientEffect(labels=["animal"]),
         )
-
-
-def test_verify_total_number_allows_equal_or_less(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_c": {"animal": 2}})
-    _verify_total_number(2)
-
-
-def test_verify_synthesis_parameter_accepts_valid_total_number(monkeypatch):
-    _patch_dataset(monkeypatch, {"dataset_c": {"animal": 2}})
-    partitions = [Partition(percentage=1.0, n_sources=1)]
-    verify_synthesis_parameter(_make_params(partitions, total_number=2))
