@@ -10,7 +10,7 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
 
 
 @dataclass(frozen=True, slots=True)
-class AllocationResult:
+class SourceAllocationResult:
     partition: Partition
     labels: Sequence[Label]
     actual_size: int
@@ -56,7 +56,7 @@ def _allocate_labels(
 
 def allocate_percentage(
     synthesis_parameter: SynthesisParameter,
-) -> list[AllocationResult]:
+) -> list[SourceAllocationResult]:
     # 1. calculate the number of each partition by multiplying each percentage by the required number
     # 2. you know the exact number of sources for each partition, now try to allocate them with specific labels from the Sources,
     # try to avoid overlap, but if there are not enough sources, you can
@@ -66,7 +66,7 @@ def allocate_percentage(
     results = []
     for partition in synthesis_parameter.partitions:
         results.append(
-            AllocationResult(
+            SourceAllocationResult(
                 partition=partition,
                 actual_size=floor(
                     synthesis_parameter.total_number * partition.percentage

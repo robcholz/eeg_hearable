@@ -3,6 +3,12 @@ from typing import Optional, List, Mapping, Dict, Tuple
 
 from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.data_accessor import download_data
+from sound_foundry.data_accessor.clip import Clip
+from sound_foundry.data_accessor.download_data import (
+    get_audio_list_by_category,
+    get_audio_categories,
+)
+from sound_foundry.data_accessor.clip import Label
 
 # do not edit this
 _ORIGINAL_MAP: Mapping[str, List[str]] = {
@@ -342,13 +348,13 @@ def _ensure_maps(dataset_path: Path) -> None:
     category_to_datasets: Dict[str, List[str]] = {}
     for name in dataset_names:
         try:
-            categories = download_data.get_audio_categories(dataset_path, name)
+            categories = get_audio_categories(dataset_path, name)
         except FileNotFoundError:
             continue
         for category in categories:
             category_to_datasets.setdefault(category, []).append(name)
 
-    all_known_categories = set(download_data.get_audio_categories(dataset_path, None))
+    all_known_categories = set(get_audio_categories(dataset_path, None))
     mapped_categories = {c for cats in _ORIGINAL_MAP.values() for c in cats}
     if all_known_categories != mapped_categories:
         missing = sorted(all_known_categories - mapped_categories)
@@ -366,7 +372,7 @@ def _ensure_maps(dataset_path: Path) -> None:
         _OPTIMIZED_MAP[label] = pairs
 
 
-def get_audio_labels(dataset_path: Path, dataset: Optional[str]) -> list[str]:
+def get_audio_labels(dataset_path: Path, dataset: Optional[str]) -> list[Label]:
     """
     Return the available audio categories for supported datasets.
 
@@ -404,15 +410,15 @@ def get_audio_labels(dataset_path: Path, dataset: Optional[str]) -> list[str]:
 
 
 def get_audio_list_by_label(
-    dataset_path: Path, dataset: Optional[str], label: str
-) -> list[str]:
+    dataset_path: Path, dataset: Optional[str], label: Label
+) -> list[Clip]:
     """
     Args:
         dataset_path: the path to the dataset dir
         label: sound class name
         dataset: optional dataset name, if None, search across all datasets
     Returns:
-        list of audio file paths (strings)
+        list of audio files
     """
     _ensure_maps(dataset_path)
     if not _ORIGINAL_MAP:
@@ -423,12 +429,21 @@ def get_audio_list_by_label(
         raise ValueError(f"Unknown label: {label}")
 
     dataset_name = dataset.strip().lower() if dataset else None
-    results: List[str] = []
+    results: List[Clip] = []
     for ds_name, ds_category in _OPTIMIZED_MAP[label]:
         if dataset_name is not None and ds_name != dataset_name:
             continue
         results.extend(
-            download_data.get_audio_list_by_category(dataset_path, ds_name, ds_category)
+            [
+                Clip(
+                    unified_label=label,
+                    underlying_label=ds_category,
+                    path=Path(clip_path),
+                )
+                for clip_path in get_audio_list_by_category(
+                    dataset_path, ds_name, ds_category
+                )
+            ]
         )
     return sorted(results)
 

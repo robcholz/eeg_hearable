@@ -11,8 +11,7 @@ from sound_foundry.data_accessor import (
     get_all_dataset_name,
     get_audio_list_by_label,
 )
-
-Label = str
+from sound_foundry.data_accessor.clip import Label
 
 
 @functools.total_ordering
