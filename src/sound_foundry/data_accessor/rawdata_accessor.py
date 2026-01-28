@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional, List, Mapping, Dict, Tuple
 
+from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.data_accessor import download_data
 
 # do not edit this
@@ -438,6 +439,20 @@ def get_all_dataset_name() -> list[str]:
         list of all dataset names
     """
     return download_data.get_all_dataset_name()
+
+
+def get_rawdata_size():
+    total = 0
+    for dataset_name in get_all_dataset_name():
+        dataset_size = 0
+        for label in get_audio_labels(get_raw_dataset_path(), dataset_name):
+            dataset_size += len(
+                get_audio_list_by_label(
+                    get_raw_dataset_path(), dataset=dataset_name, label=label
+                )
+            )
+        total += dataset_size
+    return total
 
 
 def print_all_dataset_info(dataset_path: Path):
