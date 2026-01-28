@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, List, Mapping, Dict, Tuple
 
-import download_data
+from sound_foundry.data_accessor import download_data
 
 # do not edit this
 _ORIGINAL_MAP: Mapping[str, List[str]] = {
@@ -11,8 +11,10 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Domestic_animals_and_pets",
         "Livestock_and_farm_animals_and_working_animals",
         "Wild_animals",
-        "Dog", "dog",
-        "Cat", "cat",
+        "Dog",
+        "dog",
+        "Cat",
+        "cat",
         "Bird",
         "Bird_vocalization_and_bird_call_and_bird_song",
         "chirping_birds",
@@ -20,10 +22,14 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "hen",
         "rooster",
         "Fowl",
-        "Frog", "frog",
-        "Cricket", "crickets",
-        "Insect", "insects",
-        "Crow", "crow",
+        "Frog",
+        "frog",
+        "Cricket",
+        "crickets",
+        "Insect",
+        "insects",
+        "Crow",
+        "crow",
         "Gull_and_seagull",
         "Buzz",
         "Meow",
@@ -34,7 +40,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "pig",
         "sheep",
     ],
-
     # -------- human voice & group --------
     "human_voice": [
         "Human_voice",
@@ -64,7 +69,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "crying_baby",
         "baby",
     ],
-
     # -------- body / close-range human actions --------
     "body_sounds": [
         "Hands",
@@ -72,8 +76,10 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Breathing",
         "breathing",
         "Respiratory_sounds",
-        "Cough", "coughing",
-        "Sneeze", "sneezing",
+        "Cough",
+        "coughing",
+        "Sneeze",
+        "sneezing",
         "Burping_and_eructation",
         "Fart",
         "Chewing_and_mastication",
@@ -87,7 +93,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "brushing_teeth",
         "Scratching_(performance_technique)",
     ],
-
     # -------- music --------
     "music": [
         "Music",
@@ -112,7 +117,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Wind_instrument_and_woodwind_instrument",
         "Strum",
     ],
-
     "percussion": [
         "Percussion",
         "Drum",
@@ -132,7 +136,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Glockenspiel",
         "Rattle_(instrument)",
     ],
-
     # -------- vehicles --------
     "aircraft": [
         "Aircraft",
@@ -140,7 +143,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "airplane",
         "helicopter",
     ],
-
     "vehicle_ground": [
         "Vehicle",
         "Motor_vehicle_(road)",
@@ -152,17 +154,17 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Car_passing_by",
         "Bicycle",
         "Skateboard",
-        "Train", "train",
+        "Train",
+        "train",
         "Rail_transport",
         "Subway_and_metro_and_underground",
     ],
-
     "vehicle_water": [
         "Boat_and_Water_vehicle",
     ],
-
     "vehicle_sounds": [
-        "Engine", "engine",
+        "Engine",
+        "engine",
         "Engine_starting",
         "Idling",
         "Accelerating_and_revving_and_vroom",
@@ -171,10 +173,10 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Traffic_noise_and_roadway_noise",
         "Whoosh_and_swoosh_and_swish",
     ],
-
     # -------- water --------
     "water": [
-        "Water", "water",
+        "Water",
+        "water",
         "Liquid",
         "Stream",
         "Ocean",
@@ -195,21 +197,22 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "toilet_flush",
         "can_opening",
     ],
-
     # -------- weather / nature --------
     "weather": [
-        "Rain", "rain",
+        "Rain",
+        "rain",
         "Raindrop",
         "water_drops",
-        "Wind", "wind",
+        "Wind",
+        "wind",
         "Thunder",
         "Thunderstorm",
         "thunderstorm",
         "Fire",
         "crackling_fire",
-        "Fireworks", "fireworks",
+        "Fireworks",
+        "fireworks",
     ],
-
     # -------- domestic / tools / objects --------
     "domestic_and_objects": [
         "Domestic_sounds_and_home_sounds",
@@ -232,7 +235,8 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Typing",
         "Computer_keyboard",
         "keyboard_typing",
-        "Printer", "printer",
+        "Printer",
+        "printer",
         "mouse_click",
         "Keys_jangling",
         "Coin_(dropping)",
@@ -254,7 +258,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Ratchet_and_pawl",
         "Rattle",
     ],
-
     "tools_and_machines": [
         "Tools",
         "Power_tool",
@@ -275,12 +278,12 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Frying_(food)",
         "frying",
     ],
-
     # -------- alerts / signals --------
     "alerts": [
         "Alarm",
         "clock_alarm",
-        "Siren", "siren",
+        "Siren",
+        "siren",
         "Ringtone",
         "Telephone",
         "Bell",
@@ -294,7 +297,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Tick-tock",
         "clock_tick",
     ],
-
     # -------- impacts --------
     "impacts": [
         "Boom",
@@ -302,7 +304,6 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "Gunshot_and_gunfire",
         "Slam",
     ],
-
     # -------- dataset meta --------
     "audio_meta": [
         "audio-bass",
@@ -325,6 +326,7 @@ _OPTIMIZED_MAP: Mapping[str, List[Tuple[str, str]]] = {}
 # this is to verify the completeness of the original map.
 # 3. set up an optimized map that is map[str,list[(str,str)]], the key is the unified label, the value is a tuple,
 # first element is the dataset name (we call it just 'dataset'), second element is the category.
+
 
 def _ensure_maps(dataset_path: Path) -> None:
     global _OPTIMIZED_MAP
@@ -400,7 +402,9 @@ def get_audio_labels(dataset_path: Path, dataset: Optional[str]) -> list[str]:
     return result
 
 
-def get_audio_list_by_label(dataset_path: Path, dataset: Optional[str], label: str) -> list[str]:
+def get_audio_list_by_label(
+    dataset_path: Path, dataset: Optional[str], label: str
+) -> list[str]:
     """
     Args:
         dataset_path: the path to the dataset dir
@@ -422,7 +426,9 @@ def get_audio_list_by_label(dataset_path: Path, dataset: Optional[str], label: s
     for ds_name, ds_category in _OPTIMIZED_MAP[label]:
         if dataset_name is not None and ds_name != dataset_name:
             continue
-        results.extend(download_data.get_audio_list_by_category(dataset_path, ds_name, ds_category))
+        results.extend(
+            download_data.get_audio_list_by_category(dataset_path, ds_name, ds_category)
+        )
     return sorted(results)
 
 
@@ -432,3 +438,34 @@ def get_all_dataset_name() -> list[str]:
         list of all dataset names
     """
     return download_data.get_all_dataset_name()
+
+
+def print_all_dataset_info(dataset_path: Path):
+    total = 0
+    print("Dataset info:")
+    for dataset_name in get_all_dataset_name():
+        dataset_size = 0
+        for label in get_audio_labels(dataset_path, dataset_name):
+            dataset_size += len(
+                get_audio_list_by_label(dataset_path, dataset=dataset_name, label=label)
+            )
+        print(f"{dataset_name}: {dataset_size} files")
+        total += dataset_size
+    print("Total files: ", total)
+
+
+def print_all_label_info(dataset_path: Path):
+    total: Mapping[str, int] = {}
+    print("Label info:")
+    for dataset_name in get_all_dataset_name():
+        for label in get_audio_labels(dataset_path, dataset_name):
+            files = get_audio_list_by_label(
+                dataset_path, dataset=dataset_name, label=label
+            )
+            count = len(files)
+            total[label] = total.get(label, 0) + count
+    total_count = 0
+    for label in total:
+        total_count += total[label]
+        print(f"{label}: {total[label]} files")
+    print("Total files:", total_count)

@@ -88,7 +88,7 @@ dependencies:
   - simdjson=3.10.1=hdb19cb5_0
   - libunistring=1.3=hb25bd0a_0
   - zlib=1.3.1=hb25bd0a_0
-  - openssl=3.6.0
+  - openssl=3.6.1
   - typer-slim=0.20.0=py313h06a4308_0
   - python-dotenv=1.1.0=py313h06a4308_0
   - jsonpointer=3.0.0=py313h06a4308_0
@@ -135,4 +135,6 @@ dependencies:
   - libgcc=15.2.0=h69a1729_7
   - menuinst=2.4.2=py313h06a4308_1
   - ffmpeg
+  - ruff
+  - black
 prefix: /home/zsheng2/miniconda3/envs/eeg_hearable
