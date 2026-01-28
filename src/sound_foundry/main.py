@@ -1,12 +1,16 @@
 from pathlib import Path
 
-from .data_accessor import download_data, print_all_dataset_info, print_all_label_info, get_audio_labels
-from .utils import get_project_root
+from sound_foundry.config import get_raw_dataset_path
+from .data_accessor import (
+    download_data,
+    print_all_dataset_info,
+    print_all_label_info,
+    get_audio_labels,
+)
 
 
 def main():
-    raw_dataset_path = get_project_root() / "raw_dataset"
-    raw_dataset_path.mkdir(parents=True, exist_ok=True)
+    raw_dataset_path = get_raw_dataset_path()
 
     download_data(raw_dataset_path)
     print("\n")
@@ -16,7 +20,7 @@ def main():
 
     dataset_path = Path("output_dataset")
     dataset_path.mkdir(parents=True, exist_ok=True)
-    print(get_audio_labels(dataset_path,None))
+    print(get_audio_labels(dataset_path, None))
     # synthesize_data.synthesize_soundscape()
 
 

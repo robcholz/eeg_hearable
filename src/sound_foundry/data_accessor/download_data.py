@@ -374,7 +374,9 @@ def get_audio_list_by_category(
             reader = csv.DictReader(csvfile)
             for row in reader:
                 labels = row.get("labels", "")
-                if label in [line.strip().lower() for line in labels.split(",") if line.strip()]:
+                if label in [
+                    line.strip().lower() for line in labels.split(",") if line.strip()
+                ]:
                     fname = row["fname"]
                     candidate = audio_dir / fname
                     candidate_wav = audio_dir / f"{fname}.wav"
