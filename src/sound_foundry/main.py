@@ -1,4 +1,8 @@
+import argparse
+import json
 from pathlib import Path
+
+from dacite import from_dict
 
 from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.data_accessor import (
@@ -14,33 +18,30 @@ from sound_foundry.pipeline.source_selector import SourceSelector
 from sound_foundry.pipeline.transient_effect_builder import build_transient_effect
 from sound_foundry.synthesis_parameter.synthesis_parameter import (
     SynthesisParameter,
-    Partition,
-    Sources,
 )
+from sound_foundry.version_control import version_control
 
 
 def main():
-    raw_dataset_path = get_raw_dataset_path()
+    parser = argparse.ArgumentParser(description="Read and print a JSON file.")
+    parser.add_argument("path", type=Path, help="Path to a JSON file.")
+    args = parser.parse_args()
 
+    with args.path.open("r", encoding="utf-8") as f:
+        parameters_json = json.load(f)
+    version_control.check_validity()
+    version_control.set_current_snapshot(args.path)
+
+    synthesis_parameters = from_dict(SynthesisParameter, parameters_json, config=None)
+
+    print(f"Parameter: {synthesis_parameters}")
+
+    raw_dataset_path = get_raw_dataset_path()
     download_data(raw_dataset_path)
     print("\n")
     print_all_dataset_info(raw_dataset_path)
     print("\n")
     print_all_label_info(raw_dataset_path)
-
-    dataset_path = Path("output_dataset")
-    dataset_path.mkdir(parents=True, exist_ok=True)
-
-    synthesis_parameters = SynthesisParameter(
-        total_number=50,
-        partitions=[
-            Partition(percentage=0.5, n_sources=2),
-            Partition(percentage=0.5, n_sources=3),
-        ],
-        sources=Sources(labels=["animal", "impacts", "music", "weather", "alerts"]),
-        transient_effect=None,
-        dynamic_effect=None,
-    )
 
     percentage = allocate_percentage(synthesis_parameters)
     source_selector = SourceSelector()

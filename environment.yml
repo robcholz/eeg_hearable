@@ -137,4 +137,5 @@ dependencies:
   - ffmpeg
   - ruff
   - black
+  - dacite
 prefix: /home/zsheng2/miniconda3/envs/eeg_hearable

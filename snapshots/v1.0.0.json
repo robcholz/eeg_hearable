@@ -1,0 +1,24 @@
+{
+  "total_number": 50,
+  "partitions": [
+    {
+      "percentage": 0.5,
+      "n_sources": 2
+    },
+    {
+      "percentage": 0.5,
+      "n_sources": 3
+    }
+  ],
+  "sources": {
+    "labels": [
+      "animal",
+      "impacts",
+      "music",
+      "weather",
+      "alerts"
+    ]
+  },
+  "transient_effect": null,
+  "dynamic_effect": null
+}
