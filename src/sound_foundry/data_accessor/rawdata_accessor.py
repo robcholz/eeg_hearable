@@ -1,5 +1,6 @@
+from functools import lru_cache
 from pathlib import Path
-from typing import Optional, List, Mapping, Dict, Tuple
+from typing import Optional, List, Mapping, Dict, Tuple, Sequence
 
 from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.data_accessor import download_data
@@ -409,9 +410,10 @@ def get_audio_labels(dataset_path: Path, dataset: Optional[str]) -> list[Label]:
     return result
 
 
+@lru_cache(maxsize=None)
 def get_audio_list_by_label(
     dataset_path: Path, dataset: Optional[str], label: Label
-) -> list[Clip]:
+) -> Sequence[Clip]:
     """
     Args:
         dataset_path: the path to the dataset dir

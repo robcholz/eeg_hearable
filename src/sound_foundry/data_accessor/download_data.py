@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 import csv
 import shutil
@@ -348,6 +349,7 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
     )
 
 
+@lru_cache(maxsize=None)
 def get_audio_list_by_category(
     dataset_path: Path, dataset: Optional[str], category: str
 ) -> list[str]:
@@ -373,10 +375,8 @@ def get_audio_list_by_category(
         with csv_path.open(newline="") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                labels = row.get("labels", "")
-                if label in [
-                    line.strip().lower() for line in labels.split(",") if line.strip()
-                ]:
+                labels = row.get("labels", "").lower()
+                if label in [line.strip() for line in labels.split(",")]:
                     fname = row["fname"]
                     candidate = audio_dir / fname
                     candidate_wav = audio_dir / f"{fname}.wav"
