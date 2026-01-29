@@ -25,11 +25,19 @@ def get_current_data_folder() -> Path:
 
 
 def get_metadata_file_path() -> Path:
-    return get_output_dataset_path().joinpath(f"{_VERSION_NAME}.json")
+    return (
+        get_output_dataset_path()
+        .joinpath(f"{_VERSION_NAME}-manifest")
+        .joinpath("metadata.json")
+    )
 
 
 def get_labels_file_path() -> Path:
-    return get_output_dataset_path().joinpath(f"{_VERSION_NAME}_labels.csv")
+    return (
+        get_output_dataset_path()
+        .joinpath(f"{_VERSION_NAME}-manifest")
+        .joinpath("labels.csv")
+    )
 
 
 def get_git_ref() -> str:
