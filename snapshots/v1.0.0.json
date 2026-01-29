@@ -19,6 +19,11 @@
       "alerts"
     ]
   },
-  "transient_effect": null,
+  "transient_effect": {
+    "labels": [
+      "domestic_and_objects",
+      "tools_and_machines"
+    ]
+  },
   "dynamic_effect": null
 }

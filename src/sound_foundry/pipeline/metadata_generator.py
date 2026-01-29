@@ -50,7 +50,7 @@ def generate_metadata(
             source_labels = (
                 manifest.dynamic_effect.transient_effect.source_selection.allocation_result.labels
             )
-            transient_labels = []
+            transient_labels = manifest.dynamic_effect.transient_effect.labels
             source_count = len(source_labels)
             transient_count = len(transient_labels)
             writer.writerow(
