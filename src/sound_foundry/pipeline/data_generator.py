@@ -12,6 +12,7 @@ from sound_foundry.pipeline.dynamic_audio_decorator import DynamicEffectDecorati
 @dataclass(frozen=True, slots=True)
 class AudioManifest:
     dynamic_effect: DynamicEffectDecorationResult
+    file_id: int
 
 
 def _concat_wav_files(sources: Iterable[Path], output_path: Path) -> None:
@@ -69,7 +70,9 @@ def generate_audio_data(
         for output_set in source_selection.outputs:
             output_path = output_dir / f"{output_index:}.wav"
             _concat_wav_files((clip.path for clip in output_set), output_path)
-            manifests.append(AudioManifest(dynamic_effect=dynamic_effect))
+            manifests.append(
+                AudioManifest(dynamic_effect=dynamic_effect, file_id=output_index)
+            )
             output_index += 1
 
     return manifests

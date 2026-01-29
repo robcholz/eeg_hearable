@@ -1,4 +1,4 @@
-from dataclasses import asdict
+import csv
 import json
 from typing import Sequence
 
@@ -32,4 +32,33 @@ def generate_metadata(
 
     # generate a csv: column:
     csv_file_path = get_labels_file_path()  # may not exist
-    pass
+    csv_file_path.parent.mkdir(parents=True, exist_ok=True)
+    # columns: id(filename stem), source_labels, transient_labels, source_count, transient_count
+    header = [
+        "id",
+        "source_labels",
+        "transient_labels",
+        "source_count",
+        "transient_count",
+    ]
+    with csv_file_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+
+        for manifest in manifests:
+            data_id = manifest.file_id
+            source_labels = (
+                manifest.dynamic_effect.transient_effect.source_selection.allocation_result.labels
+            )
+            transient_labels = []
+            source_count = len(source_labels)
+            transient_count = len(transient_labels)
+            writer.writerow(
+                [
+                    data_id,
+                    ",".join(source_labels),
+                    ",".join(transient_labels),
+                    source_count,
+                    transient_count,
+                ]
+            )
