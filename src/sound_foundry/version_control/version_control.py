@@ -24,6 +24,14 @@ def get_current_data_folder() -> Path:
     return path
 
 
+def get_data_dep_folder() -> Path:
+    if _VERSION_NAME == "":
+        raise Exception("no snapshot name")
+    path = get_output_dataset_path().joinpath(f"{_VERSION_NAME}-deps")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def get_metadata_file_path() -> Path:
     return (
         get_output_dataset_path()
@@ -37,6 +45,14 @@ def get_labels_file_path() -> Path:
         get_output_dataset_path()
         .joinpath(f"{_VERSION_NAME}-manifest")
         .joinpath("labels.csv")
+    )
+
+
+def get_original_data_map() -> Path:
+    return (
+        get_output_dataset_path()
+        .joinpath(f"{_VERSION_NAME}-manifest")
+        .joinpath("original_data_map.json")
     )
 
 
