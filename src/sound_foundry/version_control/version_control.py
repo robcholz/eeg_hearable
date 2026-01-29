@@ -24,6 +24,52 @@ def get_current_data_folder() -> Path:
     return path
 
 
+def get_metadata_file_path() -> Path:
+    return get_output_dataset_path().joinpath(f"{_VERSION_NAME}.json")
+
+
+def get_labels_file_path() -> Path:
+    return get_output_dataset_path().joinpath(f"{_VERSION_NAME}_labels.csv")
+
+
+def get_git_ref() -> str:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=str(get_project_root()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"git rev-parse failed: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def get_version_name() -> str:
+    return _VERSION_NAME
+
+
+def get_checksum() -> str:
+    import hashlib
+
+    checksum_dir = get_current_data_folder()
+    digest = hashlib.sha256()
+    for path in sorted(p for p in checksum_dir.rglob("*") if p.is_file()):
+        digest.update(str(path.relative_to(checksum_dir)).encode("utf-8"))
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def get_datetime() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def check_validity():
     # 1. check if git is clean, no local changes, everything is commited to cloud.
     # 2. check if the all the files in snapshots are json, and has format vXX.XX.XX
