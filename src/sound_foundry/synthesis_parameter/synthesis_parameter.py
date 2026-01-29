@@ -62,6 +62,11 @@ class DynamicEffect:
 
 
 @dataclass(frozen=True, slots=True)
+class ExportOption:
+    copy_original_files: bool
+
+
+@dataclass(frozen=True, slots=True)
 class SynthesisParameter:
     """
     Configuration for a complete audio synthesis job.
@@ -78,6 +83,9 @@ class SynthesisParameter:
             A sequence of `Partition` objects describing how each output audio
             sample is composed. Each partition specifies the proportion of the
             final audio and how many source clips are sampled for that segment.
+
+        export_options:
+            Export options
 
         sources:
             A collection of dataset labels that are allowed to be used as
@@ -96,6 +104,7 @@ class SynthesisParameter:
     total_number: int
     partitions: Sequence[Partition]
     sources: Sources
+    export_options: ExportOption
     transient_effect: Optional[TransientEffect] = None
     dynamic_effect: Optional[DynamicEffect] = None
 
