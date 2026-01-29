@@ -1,9 +1,14 @@
 import csv
+import hashlib
 import json
+import shutil
 from dataclasses import asdict
+from pathlib import Path
 from typing import Sequence
 
+from sound_foundry.data_accessor.clip import Clip
 from sound_foundry.pipeline.data_generator import AudioManifest
+from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.synthesis_parameter.synthesis_parameter import SynthesisParameter
 from sound_foundry.version_control.version_control import (
     get_metadata_file_path,
@@ -13,6 +18,7 @@ from sound_foundry.version_control.version_control import (
     get_datetime,
     get_version_name,
     get_original_data_map,
+    get_data_dep_folder,
 )
 
 
@@ -66,6 +72,44 @@ def generate_metadata(
             )
 
     data_map: dict[str, list[dict[str, object]]] = {"data": []}
+    copy_original_files = build_parameter.export_options.copy_original_files
+    dep_root = get_data_dep_folder() if copy_original_files else None
+    raw_root = get_raw_dataset_path()
+    copied_paths: set[Path] = set()
+
+    def _flat_name(rel_path: Path) -> str:
+        posix_path = rel_path.as_posix()
+        base = posix_path.replace("/", "-")
+        digest = hashlib.sha1(posix_path.encode("utf-8")).hexdigest()[:8]
+        suffix = Path(base).suffix
+        stem = base[: -len(suffix)] if suffix else base
+        return f"{stem}-{digest}{suffix}"
+
+    def _copy_clip_path(src_path: Path) -> Path:
+        if dep_root is None:
+            return src_path
+        try:
+            rel_path = src_path.relative_to(raw_root)
+        except ValueError:
+            rel_path = Path(src_path.name)
+        flat_name = _flat_name(rel_path)
+        dst_path = dep_root / flat_name
+        if dst_path not in copied_paths:
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_path, dst_path)
+            copied_paths.add(dst_path)
+        return dst_path
+
+    def _clip_to_dict(clip: Clip) -> dict[str, object]:
+        data = asdict(clip)
+        src_path = data["path"]
+        dst_path = _copy_clip_path(src_path)
+        if dep_root is not None:
+            data["path"] = str(dst_path.relative_to(dep_root))
+        else:
+            data["path"] = str(dst_path)
+        return data
+
     effect_offsets: dict[int, int] = {}
     for manifest in manifests:
         data_id = manifest.file_id
@@ -91,12 +135,8 @@ def generate_metadata(
         data_map["data"].append(
             {
                 "id": data_id,
-                "source_clips": [
-                    {**asdict(clip), "path": str(clip.path)} for clip in source_clips
-                ],
-                "transient_clips": [
-                    {**asdict(clip), "path": str(clip.path)} for clip in transient_clips
-                ],
+                "source_clips": [_clip_to_dict(clip) for clip in source_clips],
+                "transient_clips": [_clip_to_dict(clip) for clip in transient_clips],
             }
         )
 
