@@ -16,7 +16,7 @@ class SourceSelectionResult:
     outputs: Sequence[Sequence[Clip]]
 
 
-class SourceSelector:
+class AudioSelector:
     def __init__(self):
         """Initialize caches used to track available and reused clips per label."""
         self.cache: Dict[Label, Set[Clip]] = {}
@@ -64,6 +64,37 @@ class SourceSelector:
         heapq.heappush(self.ref_map[label], (usage + 1, key, clip))
         return clip
 
+    def select(
+        self,
+        size: int,
+        labels: Sequence[Label],
+    ) -> Sequence[Sequence[Clip]]:
+        """Expand allocation results into concrete clip selections per audio set.
+
+        Args:
+            size: The size of the audio set.
+            labels: List of labels to select.
+
+        Returns:
+            A list of selection results with chosen clips.
+        """
+        # each audio set
+        outputs = []
+        for audio_set_id in range(size):
+            # each single audio has multiple sources
+            sources_for_one_audio = [
+                self._get_source_by_label(label) for label in labels
+            ]
+            outputs.append(sources_for_one_audio)
+
+        return outputs
+
+
+class SourceSelector(AudioSelector):
+    def __init__(self):
+        """Initialize caches used to track available and reused clips per label."""
+        super().__init__()
+
     def select_source(
         self,
         source_allocations: Sequence[SourceAllocationResult],
@@ -79,14 +110,9 @@ class SourceSelector:
         results: list[SourceSelectionResult] = []
         for allocation_result in source_allocations:
             # each audio set
-            outputs = []
-            for audio_set_id in range(allocation_result.actual_size):
-                # each single audio has multiple sources
-                sources_for_one_audio = [
-                    self._get_source_by_label(label)
-                    for label in allocation_result.labels
-                ]
-                outputs.append(sources_for_one_audio)
+            outputs = super().select(
+                allocation_result.actual_size, allocation_result.labels
+            )
 
             results.append(SourceSelectionResult(allocation_result, outputs))
 
