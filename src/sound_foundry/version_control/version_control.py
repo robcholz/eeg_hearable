@@ -94,7 +94,7 @@ def get_datetime() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def check_validity():
+def check_validity(dev_mode: bool):
     # 1. check if git is clean, no local changes, everything is commited to cloud.
     # 2. check if the all the files in snapshots are json, and has format vXX.XX.XX
     import subprocess
@@ -108,9 +108,15 @@ def check_validity():
         check=False,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"git status failed: {result.stderr.strip()}")
+        if dev_mode:
+            pass
+        else:
+            raise RuntimeError(f"git status failed: {result.stderr.strip()}")
     if result.stdout.strip():
-        raise RuntimeError("git working tree is not clean")
+        if dev_mode:
+            pass
+        else:
+            raise RuntimeError("git working tree is not clean")
 
     snapshot_dir = _get_snapshot_folder()
     if not snapshot_dir.exists():

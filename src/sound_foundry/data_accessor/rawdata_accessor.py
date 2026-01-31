@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional, List, Mapping, Dict, Tuple, Sequence
+import logging
 
 from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.data_accessor import download_data
@@ -10,6 +11,8 @@ from sound_foundry.data_accessor.download_data import (
     get_audio_categories,
 )
 from sound_foundry.data_accessor.clip import Label
+
+LOG = logging.getLogger("sound_foundry")
 
 # do not edit this
 _ORIGINAL_MAP: Mapping[str, List[str]] = {
@@ -474,21 +477,21 @@ def get_rawdata_size():
 
 def print_all_dataset_info(dataset_path: Path):
     total = 0
-    print("Dataset info:")
+    LOG.info("Dataset info:")
     for dataset_name in get_all_dataset_name():
         dataset_size = 0
         for label in get_audio_labels(dataset_path, dataset_name):
             dataset_size += len(
                 get_audio_list_by_label(dataset_path, dataset=dataset_name, label=label)
             )
-        print(f"{dataset_name}: {dataset_size} files")
+        LOG.info("%s: %d files", dataset_name, dataset_size)
         total += dataset_size
-    print("Total files: ", total)
+    LOG.info("Total files: %d", total)
 
 
 def print_all_label_info(dataset_path: Path):
     total: Mapping[str, int] = {}
-    print("Label info:")
+    LOG.info("Label info:")
     for dataset_name in get_all_dataset_name():
         for label in get_audio_labels(dataset_path, dataset_name):
             files = get_audio_list_by_label(
@@ -499,5 +502,5 @@ def print_all_label_info(dataset_path: Path):
     total_count = 0
     for label in total:
         total_count += total[label]
-        print(f"{label}: {total[label]} files")
-    print("Total files:", total_count)
+        LOG.info("%s: %d files", label, total[label])
+    LOG.info("Total files: %d", total_count)

@@ -33,6 +33,7 @@ def generate_metadata(
         "git_ref": get_git_ref(),
         "checksum": get_checksum(),
         "datetime_utc": get_datetime(),
+        "build_params": asdict(build_parameter),
     }
 
     with metadata_file_path.open("w", encoding="utf-8") as f:

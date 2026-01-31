@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from math import floor
 from typing import Sequence
 
@@ -7,6 +8,8 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     Partition,
     Label,
 )
+
+LOG = logging.getLogger("sound_foundry")
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,8 +53,18 @@ def _allocate_labels(
         raise ValueError("unknown partition")
 
     # overlap
-    # todo
-    raise NotImplementedError
+    cursor = 0
+    for current_partition in partitions:
+        if current_partition == partition:
+            labels: list[Label] = []
+            for _ in range(current_partition.n_sources):
+                labels.append(available_labels[cursor % len(available_labels)])
+                cursor += 1
+            return labels
+
+        cursor += current_partition.n_sources
+
+    raise ValueError("unknown partition")
 
 
 def allocate_percentage(
@@ -65,6 +78,12 @@ def allocate_percentage(
 
     results = []
     for partition in synthesis_parameter.partitions:
+        LOG.info(
+            "Allocate partition (percentage=%.3f, n_sources=%d, n_transients=%d)",
+            partition.percentage,
+            partition.n_sources,
+            partition.n_transients,
+        )
         results.append(
             SourceAllocationResult(
                 partition=partition,

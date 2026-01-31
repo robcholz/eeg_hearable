@@ -19,10 +19,11 @@ class Partition:
 
     percentage: float  # e.g. 0.25 means 25%
     n_sources: int  # number of source clips in this partition
+    n_transients: int  # number of transients clips in this partition
 
     @property
     def key(self) -> str:
-        return f"{self.percentage}-{self.n_sources}"
+        return f"{self.percentage}-{self.n_sources}-{self.n_transients}"
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Partition):
@@ -79,6 +80,9 @@ class SynthesisParameter:
         total_number:
             Total number of synthesized audio samples to generate in this run.
 
+        duration:
+            The duration of the data, in milliseconds.
+
         partitions:
             A sequence of `Partition` objects describing how each output audio
             sample is composed. Each partition specifies the proportion of the
@@ -102,6 +106,7 @@ class SynthesisParameter:
     """
 
     total_number: int
+    duration: int
     partitions: Sequence[Partition]
     sources: Sources
     export_options: ExportOption
@@ -113,10 +118,14 @@ def verify_synthesis_parameter(
     synthesis_parameter: SynthesisParameter,
 ):
     _verify_total_number(synthesis_parameter.total_number)
+    _verify_duration(synthesis_parameter.duration)
     _verify_partitions(synthesis_parameter.partitions)
     _verify_sources(synthesis_parameter.sources, synthesis_parameter.transient_effect)
     _verify_transient_effect(
         synthesis_parameter.transient_effect, synthesis_parameter.sources
+    )
+    _verify_transient_counts(
+        synthesis_parameter.partitions, synthesis_parameter.transient_effect
     )
     _verify_dynamic_effect(synthesis_parameter.dynamic_effect)
     pass
@@ -125,6 +134,11 @@ def verify_synthesis_parameter(
 def _verify_total_number(total_number: int):
     # todo
     pass
+
+
+def _verify_duration(duration: int) -> None:
+    if duration <= 0:
+        raise ValueError(f"duration must be positive, got {duration}")
 
 
 def _verify_partitions(partitions: Sequence[Partition]) -> None:
@@ -144,6 +158,8 @@ def _verify_partitions(partitions: Sequence[Partition]) -> None:
             raise ValueError(f"invalid percentage: {p.percentage}")
         if p.n_sources <= 0:
             raise ValueError(f"n_sources must be > 0, got {p.n_sources}")
+        if p.n_transients < 0:
+            raise ValueError(f"n_transients must be >= 0, got {p.n_transients}")
 
     total = sum(p.percentage for p in partitions)
     if total <= 0:
@@ -160,6 +176,29 @@ def _verify_partitions(partitions: Sequence[Partition]) -> None:
     if max_sources > len(available_labels):
         raise ValueError(
             f"n_sources request ({max_sources}) exceeds available labels ({len(available_labels)})"
+        )
+
+
+def _verify_transient_counts(
+    partitions: Sequence[Partition], transient_effect: Optional[TransientEffect]
+) -> None:
+    if not partitions:
+        return
+
+    max_transients = max(p.n_transients for p in partitions)
+
+    if transient_effect is None:
+        if max_transients > 0:
+            raise ValueError(
+                "n_transients must be 0 when transient_effect is not provided"
+            )
+        return
+
+    if max_transients > len(transient_effect.labels):
+        raise ValueError(
+            "n_transients request "
+            f"({max_transients}) exceeds available transient labels "
+            f"({len(transient_effect.labels)})"
         )
 
 
