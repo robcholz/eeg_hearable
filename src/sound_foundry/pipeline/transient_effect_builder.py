@@ -3,7 +3,10 @@ from typing import Sequence
 
 from sound_foundry.data_accessor.clip import Clip, Label
 from sound_foundry.pipeline.source_selector import SourceSelectionResult, AudioSelector
-from sound_foundry.synthesis_parameter.synthesis_parameter import SynthesisParameter
+from sound_foundry.synthesis_parameter.synthesis_parameter import (
+    SynthesisParameter,
+    Partition,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,8 +43,11 @@ class _TransientSelector(AudioSelector):
                 labels: Sequence[Label] = ()
                 outputs: Sequence[Sequence[Clip]] = []
             else:
-                labels = synthesis_parameter.transient_effect.labels
-                outputs = super().select(1, labels)
+                labels = _allocate_transient_labels(
+                    synthesis_parameter=synthesis_parameter,
+                    partition=source_selection.allocation_result.partition,
+                )
+                outputs = super().select(1, labels) if labels else []
 
             results.append(
                 TransientEffectBuildingResult(
@@ -57,3 +63,44 @@ def build_transient_effect(
     source_selections: Sequence[SourceSelectionResult],
 ) -> Sequence[TransientEffectBuildingResult]:
     return _TransientSelector().select_source(synthesis_parameter, source_selections)
+
+
+def _allocate_transient_labels(
+    synthesis_parameter: SynthesisParameter,
+    partition: Partition,
+) -> Sequence[Label]:
+    available_labels = synthesis_parameter.transient_effect.labels
+    available_labels = sorted(available_labels)
+
+    number_of_labels_required_in_partition = sum(
+        p.n_transients for p in synthesis_parameter.partitions
+    )
+
+    overlap = len(available_labels) < number_of_labels_required_in_partition
+
+    partitions = sorted(synthesis_parameter.partitions)
+
+    if not overlap:
+        cursor = 0
+        for current_partition in partitions:
+            if current_partition == partition:
+                lower_retrieve = cursor
+                upper_retrieve = cursor + current_partition.n_transients
+                return tuple(available_labels[lower_retrieve:upper_retrieve])
+
+            cursor += current_partition.n_transients
+
+        raise ValueError("unknown partition")
+
+    cursor = 0
+    for current_partition in partitions:
+        if current_partition == partition:
+            labels: list[Label] = []
+            for _ in range(current_partition.n_transients):
+                labels.append(available_labels[cursor % len(available_labels)])
+                cursor += 1
+            return tuple(labels)
+
+        cursor += current_partition.n_transients
+
+    raise ValueError("unknown partition")

@@ -115,7 +115,7 @@ def test_generate_audio_data_computes_per_clip_durations(
         ]
     ]
     allocation = SourceAllocationResult(
-        partition=Partition(percentage=1.0, n_sources=4),
+        partition=Partition(percentage=1.0, n_sources=4, n_transients=2),
         labels=("s1", "s2", "s3", "s4"),
         actual_size=1,
     )

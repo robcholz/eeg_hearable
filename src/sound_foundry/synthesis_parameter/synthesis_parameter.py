@@ -19,10 +19,11 @@ class Partition:
 
     percentage: float  # e.g. 0.25 means 25%
     n_sources: int  # number of source clips in this partition
+    n_transients: int  # number of transients clips in this partition
 
     @property
     def key(self) -> str:
-        return f"{self.percentage}-{self.n_sources}"
+        return f"{self.percentage}-{self.n_sources}-{self.n_transients}"
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Partition):
@@ -123,6 +124,9 @@ def verify_synthesis_parameter(
     _verify_transient_effect(
         synthesis_parameter.transient_effect, synthesis_parameter.sources
     )
+    _verify_transient_counts(
+        synthesis_parameter.partitions, synthesis_parameter.transient_effect
+    )
     _verify_dynamic_effect(synthesis_parameter.dynamic_effect)
     pass
 
@@ -154,6 +158,8 @@ def _verify_partitions(partitions: Sequence[Partition]) -> None:
             raise ValueError(f"invalid percentage: {p.percentage}")
         if p.n_sources <= 0:
             raise ValueError(f"n_sources must be > 0, got {p.n_sources}")
+        if p.n_transients < 0:
+            raise ValueError(f"n_transients must be >= 0, got {p.n_transients}")
 
     total = sum(p.percentage for p in partitions)
     if total <= 0:
@@ -170,6 +176,29 @@ def _verify_partitions(partitions: Sequence[Partition]) -> None:
     if max_sources > len(available_labels):
         raise ValueError(
             f"n_sources request ({max_sources}) exceeds available labels ({len(available_labels)})"
+        )
+
+
+def _verify_transient_counts(
+    partitions: Sequence[Partition], transient_effect: Optional[TransientEffect]
+) -> None:
+    if not partitions:
+        return
+
+    max_transients = max(p.n_transients for p in partitions)
+
+    if transient_effect is None:
+        if max_transients > 0:
+            raise ValueError(
+                "n_transients must be 0 when transient_effect is not provided"
+            )
+        return
+
+    if max_transients > len(transient_effect.labels):
+        raise ValueError(
+            "n_transients request "
+            f"({max_transients}) exceeds available transient labels "
+            f"({len(transient_effect.labels)})"
         )
 
 

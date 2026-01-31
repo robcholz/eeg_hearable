@@ -24,11 +24,13 @@ def _make_clip(label: str, idx: int) -> Clip:
     )
 
 
-def _make_params(transient_labels: tuple[str, ...] | None) -> SynthesisParameter:
+def _make_params(
+    transient_labels: tuple[str, ...] | None, n_transients: int
+) -> SynthesisParameter:
     return SynthesisParameter(
         total_number=1,
         duration=1000,
-        partitions=[Partition(percentage=1.0, n_sources=2)],
+        partitions=[Partition(percentage=1.0, n_sources=2, n_transients=n_transients)],
         sources=Sources(labels=("a", "b")),
         export_options=ExportOption(copy_original_files=False),
         transient_effect=(
@@ -57,7 +59,7 @@ def test_build_transient_effect_selects_single_audio(monkeypatch: pytest.MonkeyP
     )
 
     allocation = SourceAllocationResult(
-        partition=Partition(percentage=1.0, n_sources=2),
+        partition=Partition(percentage=1.0, n_sources=2, n_transients=2),
         labels=("a", "b"),
         actual_size=2,
     )
@@ -67,7 +69,7 @@ def test_build_transient_effect_selects_single_audio(monkeypatch: pytest.MonkeyP
     ]
     selection = SourceSelectionResult(allocation_result=allocation, outputs=outputs)
 
-    results = build_transient_effect(_make_params(transient_labels), [selection])
+    results = build_transient_effect(_make_params(transient_labels, 2), [selection])
 
     assert len(results) == 1
     assert results[0].source_selection.allocation_result is allocation
@@ -78,15 +80,49 @@ def test_build_transient_effect_selects_single_audio(monkeypatch: pytest.MonkeyP
     )
 
 
+def test_build_transient_effect_overlap_reuses_labels(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    transient_labels = ("t1", "t2")
+    clip_map = {
+        "t1": [_make_clip("t1", 1), _make_clip("t1", 2)],
+        "t2": [_make_clip("t2", 1), _make_clip("t2", 2)],
+    }
+
+    def fake_get_audio_list_by_label(raw_path, target_datasets, label):
+        return clip_map[label]
+
+    monkeypatch.setattr(
+        source_selector_module, "get_audio_list_by_label", fake_get_audio_list_by_label
+    )
+    monkeypatch.setattr(
+        source_selector_module, "get_raw_dataset_path", lambda: Path("/tmp/raw")
+    )
+
+    allocation = SourceAllocationResult(
+        partition=Partition(percentage=1.0, n_sources=2, n_transients=3),
+        labels=("a", "b"),
+        actual_size=1,
+    )
+    selection = SourceSelectionResult(
+        allocation_result=allocation,
+        outputs=[[_make_clip("a", 1), _make_clip("b", 1)]],
+    )
+
+    results = build_transient_effect(_make_params(transient_labels, 3), [selection])
+
+    assert results[0].labels == ("t1", "t2", "t1")
+
+
 def test_build_transient_effect_handles_missing_transient_effect():
     allocation = SourceAllocationResult(
-        partition=Partition(percentage=1.0, n_sources=2),
+        partition=Partition(percentage=1.0, n_sources=2, n_transients=0),
         labels=("a", "b"),
         actual_size=0,
     )
     selection = SourceSelectionResult(allocation_result=allocation, outputs=[])
 
-    results = build_transient_effect(_make_params(None), [selection])
+    results = build_transient_effect(_make_params(None, 0), [selection])
 
     assert len(results) == 1
     assert results[0].labels == ()

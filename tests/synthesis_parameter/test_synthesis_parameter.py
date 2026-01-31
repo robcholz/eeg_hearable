@@ -46,7 +46,7 @@ def test_verify_synthesis_parameter_rejects_non_positive_duration():
             SynthesisParameter(
                 total_number=1,
                 duration=0,
-                partitions=[Partition(percentage=1.0, n_sources=1)],
+                partitions=[Partition(percentage=1.0, n_sources=1, n_transients=0)],
                 sources=Sources(labels=("animal",)),
                 export_options=ExportOption(copy_original_files=False),
             )
@@ -55,8 +55,8 @@ def test_verify_synthesis_parameter_rejects_non_positive_duration():
 
 def test_verify_synthesis_parameter_rejects_sum_greater_than_one():
     partitions = [
-        Partition(percentage=0.6, n_sources=1),
-        Partition(percentage=0.5, n_sources=1),
+        Partition(percentage=0.6, n_sources=1, n_transients=0),
+        Partition(percentage=0.5, n_sources=1, n_transients=0),
     ]
     with pytest.raises(ValueError, match="cannot exceed"):
         verify_synthesis_parameter(_make_params(partitions))
@@ -64,8 +64,8 @@ def test_verify_synthesis_parameter_rejects_sum_greater_than_one():
 
 def test_verify_synthesis_parameter_allows_sum_less_than_one():
     partitions = [
-        Partition(percentage=0.4, n_sources=1),
-        Partition(percentage=0.5, n_sources=1),
+        Partition(percentage=0.4, n_sources=1, n_transients=0),
+        Partition(percentage=0.5, n_sources=1, n_transients=0),
     ]
     verify_synthesis_parameter(_make_params(partitions))
 
@@ -75,31 +75,50 @@ def test_verify_synthesis_parameter_allows_sum_less_than_one():
     [-0.1, 0.0, 1.1],
 )
 def test_verify_synthesis_parameter_rejects_invalid_percentage(percentage):
-    partitions = [Partition(percentage=percentage, n_sources=1)]
+    partitions = [Partition(percentage=percentage, n_sources=1, n_transients=0)]
     with pytest.raises(ValueError, match="invalid percentage"):
         verify_synthesis_parameter(_make_params(partitions))
 
 
 @pytest.mark.parametrize("n_sources", [0, -1])
 def test_verify_synthesis_parameter_rejects_invalid_n_sources(n_sources):
-    partitions = [Partition(percentage=1.0, n_sources=n_sources)]
+    partitions = [Partition(percentage=1.0, n_sources=n_sources, n_transients=0)]
     with pytest.raises(ValueError, match="n_sources must be > 0"):
         verify_synthesis_parameter(_make_params(partitions))
 
 
 def test_verify_synthesis_parameter_accepts_valid_partitions():
     partitions = [
-        Partition(percentage=0.4, n_sources=1),
-        Partition(percentage=0.6, n_sources=2),
+        Partition(percentage=0.4, n_sources=1, n_transients=0),
+        Partition(percentage=0.6, n_sources=2, n_transients=0),
     ]
     verify_synthesis_parameter(_make_params(partitions))
+
+
+def test_verify_synthesis_parameter_rejects_n_transients_without_effect():
+    partitions = [Partition(percentage=1.0, n_sources=1, n_transients=1)]
+    with pytest.raises(ValueError, match="n_transients must be 0"):
+        verify_synthesis_parameter(_make_params(partitions))
+
+
+def test_verify_synthesis_parameter_rejects_too_many_transients():
+    params = SynthesisParameter(
+        total_number=1,
+        duration=1000,
+        partitions=[Partition(percentage=1.0, n_sources=1, n_transients=2)],
+        sources=Sources(labels=("animal",)),
+        export_options=ExportOption(copy_original_files=False),
+        transient_effect=TransientEffect(labels=("music",)),
+    )
+    with pytest.raises(ValueError, match="n_transients request"):
+        verify_synthesis_parameter(params)
 
 
 def test_verify_partitions_rejects_duplicate_dataset_labels(monkeypatch):
     _patch_available_labels(monkeypatch, ["animal", "animal"])
     partitions = [
-        Partition(percentage=0.5, n_sources=1),
-        Partition(percentage=0.5, n_sources=1),
+        Partition(percentage=0.5, n_sources=1, n_transients=0),
+        Partition(percentage=0.5, n_sources=1, n_transients=0),
     ]
     with pytest.raises(ValueError, match="dataset labels must be unique"):
         _verify_partitions(partitions)
@@ -107,7 +126,7 @@ def test_verify_partitions_rejects_duplicate_dataset_labels(monkeypatch):
 
 def test_verify_partitions_requires_enough_dataset_labels(monkeypatch):
     _patch_available_labels(monkeypatch, ["animal", "music"])
-    partitions = [Partition(percentage=1.0, n_sources=3)]
+    partitions = [Partition(percentage=1.0, n_sources=3, n_transients=0)]
     with pytest.raises(ValueError, match="exceeds available labels"):
         _verify_partitions(partitions)
 

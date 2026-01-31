@@ -62,7 +62,7 @@ def test_select_source_outputs_shape_and_label_order(monkeypatch: pytest.MonkeyP
     )
 
     allocation = SourceAllocationResult(
-        partition=Partition(percentage=1.0, n_sources=2),
+        partition=Partition(percentage=1.0, n_sources=2, n_transients=0),
         labels=labels,
         actual_size=2,
     )

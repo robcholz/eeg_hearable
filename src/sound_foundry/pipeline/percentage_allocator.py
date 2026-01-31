@@ -50,8 +50,18 @@ def _allocate_labels(
         raise ValueError("unknown partition")
 
     # overlap
-    # todo
-    raise NotImplementedError
+    cursor = 0
+    for current_partition in partitions:
+        if current_partition == partition:
+            labels: list[Label] = []
+            for _ in range(current_partition.n_sources):
+                labels.append(available_labels[cursor % len(available_labels)])
+                cursor += 1
+            return labels
+
+        cursor += current_partition.n_sources
+
+    raise ValueError("unknown partition")
 
 
 def allocate_percentage(
