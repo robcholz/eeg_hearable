@@ -79,6 +79,9 @@ class SynthesisParameter:
         total_number:
             Total number of synthesized audio samples to generate in this run.
 
+        duration:
+            The duration of the data, in milliseconds.
+
         partitions:
             A sequence of `Partition` objects describing how each output audio
             sample is composed. Each partition specifies the proportion of the
@@ -102,6 +105,7 @@ class SynthesisParameter:
     """
 
     total_number: int
+    duration: int
     partitions: Sequence[Partition]
     sources: Sources
     export_options: ExportOption
@@ -113,6 +117,7 @@ def verify_synthesis_parameter(
     synthesis_parameter: SynthesisParameter,
 ):
     _verify_total_number(synthesis_parameter.total_number)
+    _verify_duration(synthesis_parameter.duration)
     _verify_partitions(synthesis_parameter.partitions)
     _verify_sources(synthesis_parameter.sources, synthesis_parameter.transient_effect)
     _verify_transient_effect(
@@ -125,6 +130,11 @@ def verify_synthesis_parameter(
 def _verify_total_number(total_number: int):
     # todo
     pass
+
+
+def _verify_duration(duration: int) -> None:
+    if duration <= 0:
+        raise ValueError(f"duration must be positive, got {duration}")
 
 
 def _verify_partitions(partitions: Sequence[Partition]) -> None:

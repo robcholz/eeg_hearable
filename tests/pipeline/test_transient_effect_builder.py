@@ -12,6 +12,7 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     SynthesisParameter,
     Sources,
     TransientEffect,
+    ExportOption,
 )
 
 
@@ -26,8 +27,10 @@ def _make_clip(label: str, idx: int) -> Clip:
 def _make_params(transient_labels: tuple[str, ...] | None) -> SynthesisParameter:
     return SynthesisParameter(
         total_number=1,
+        duration=1000,
         partitions=[Partition(percentage=1.0, n_sources=2)],
         sources=Sources(labels=("a", "b")),
+        export_options=ExportOption(copy_original_files=False),
         transient_effect=(
             TransientEffect(labels=transient_labels)
             if transient_labels is not None

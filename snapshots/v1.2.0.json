@@ -1,0 +1,33 @@
+{
+  "total_number": 50,
+  "duration": 3000,
+  "partitions": [
+    {
+      "percentage": 0.5,
+      "n_sources": 2
+    },
+    {
+      "percentage": 0.5,
+      "n_sources": 3
+    }
+  ],
+  "sources": {
+    "labels": [
+      "animal",
+      "impacts",
+      "music",
+      "weather",
+      "alerts"
+    ]
+  },
+  "export_options": {
+    "copy_original_files": true
+  },
+  "transient_effect": {
+    "labels": [
+      "domestic_and_objects",
+      "tools_and_machines"
+    ]
+  },
+  "dynamic_effect": null
+}

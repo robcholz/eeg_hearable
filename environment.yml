@@ -102,7 +102,7 @@ dependencies:
   - pyyaml=6.0.3=py313h591646f_0
   - nlohmann_json=3.11.2=h6a678d5_0
   - pthread-stubs=0.3=h0ce48e5_1
-  - rich=14.2.0=py313h06a4308_0
+  - rich=14.3.1
   - libxml2=2.13.9=h2c43086_0
   - ruamel.yaml=0.18.16=py313h4aee224_0
   - requests=2.32.5=py313h06a4308_1

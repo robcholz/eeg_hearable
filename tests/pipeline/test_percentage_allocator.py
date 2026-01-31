@@ -8,14 +8,17 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     Partition,
     Sources,
     SynthesisParameter,
+    ExportOption,
 )
 
 
 def _make_params(partitions, total_number=10, labels=None):
     return SynthesisParameter(
         total_number=total_number,
+        duration=1000,
         partitions=partitions,
         sources=Sources(labels=tuple(labels or ())),
+        export_options=ExportOption(copy_original_files=False),
     )
 
 

@@ -8,6 +8,7 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     _verify_sources,
     SynthesisParameter,
     verify_synthesis_parameter,
+    ExportOption,
 )
 
 
@@ -15,8 +16,10 @@ def _make_params(partitions, total_number=1, sources=None):
     sources_labels = tuple(sources or ("animal",))
     return SynthesisParameter(
         total_number=total_number,
+        duration=1000,
         partitions=partitions,
         sources=Sources(labels=sources_labels),
+        export_options=ExportOption(copy_original_files=False),
     )
 
 
@@ -35,6 +38,19 @@ def _default_dataset(monkeypatch):
 def test_verify_synthesis_parameter_rejects_empty_partitions():
     with pytest.raises(ValueError, match="partitions cannot be empty"):
         verify_synthesis_parameter(_make_params([]))
+
+
+def test_verify_synthesis_parameter_rejects_non_positive_duration():
+    with pytest.raises(ValueError, match="duration must be positive"):
+        verify_synthesis_parameter(
+            SynthesisParameter(
+                total_number=1,
+                duration=0,
+                partitions=[Partition(percentage=1.0, n_sources=1)],
+                sources=Sources(labels=("animal",)),
+                export_options=ExportOption(copy_original_files=False),
+            )
+        )
 
 
 def test_verify_synthesis_parameter_rejects_sum_greater_than_one():
