@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from typing import Sequence, Set, Dict, List, Tuple
 import heapq
 
@@ -6,6 +7,8 @@ from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.data_accessor import get_audio_list_by_label
 from sound_foundry.data_accessor.clip import Clip, Label
 from sound_foundry.pipeline.percentage_allocator import SourceAllocationResult
+
+LOG = logging.getLogger("sound_foundry")
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +112,14 @@ class SourceSelector(AudioSelector):
         """
         results: list[SourceSelectionResult] = []
         for allocation_result in source_allocations:
+            partition = allocation_result.partition
+            LOG.info(
+                "Select sources (percentage=%.3f, n_sources=%d, n_transients=%d, size=%d)",
+                partition.percentage,
+                partition.n_sources,
+                partition.n_transients,
+                allocation_result.actual_size,
+            )
             # each audio set
             outputs = super().select(
                 allocation_result.actual_size, allocation_result.labels

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from math import floor
 from typing import Sequence
 
@@ -7,6 +8,8 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     Partition,
     Label,
 )
+
+LOG = logging.getLogger("sound_foundry")
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +78,12 @@ def allocate_percentage(
 
     results = []
     for partition in synthesis_parameter.partitions:
+        LOG.info(
+            "Allocate partition (percentage=%.3f, n_sources=%d, n_transients=%d)",
+            partition.percentage,
+            partition.n_sources,
+            partition.n_transients,
+        )
         results.append(
             SourceAllocationResult(
                 partition=partition,

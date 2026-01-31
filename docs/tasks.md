@@ -2,4 +2,4 @@
 
 1. [x] Normalize sound duration
 2. [x] Partitions without transient sounds
-3. [ ] Add snapshots with human speech ad sources.
+3. [x] Add snapshots with human speech ad sources.

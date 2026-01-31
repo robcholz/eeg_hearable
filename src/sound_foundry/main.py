@@ -28,12 +28,6 @@ LOG = logging.getLogger("sound_foundry")
 
 
 def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)],
-    )
     parser = argparse.ArgumentParser(description="Read and print a JSON file.")
     parser.add_argument("path", type=Path, help="Path to a JSON file.")
     parser.add_argument(
@@ -42,6 +36,13 @@ def main():
         help="Enable development mode.",
     )
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.dev else logging.INFO,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
     if args.dev:
         LOG.info("Enabling development mode.")
 
@@ -55,19 +56,40 @@ def main():
     LOG.info("Parameter: %s", synthesis_parameters)
 
     raw_dataset_path = get_raw_dataset_path()
+    LOG.info("Stage: download datasets (path=%s)", raw_dataset_path)
     download_data(raw_dataset_path)
-    print("\n")
+    LOG.info("Stage: dataset info")
     print_all_dataset_info(raw_dataset_path)
-    print("\n")
+    LOG.info("Stage: label info")
     print_all_label_info(raw_dataset_path)
 
+    LOG.info(
+        "Stage: allocate partitions (total=%d, partitions=%d, sources=%d, transients=%d)",
+        synthesis_parameters.total_number,
+        len(synthesis_parameters.partitions),
+        len(synthesis_parameters.sources.labels),
+        (
+            len(synthesis_parameters.transient_effect.labels)
+            if synthesis_parameters.transient_effect
+            else 0
+        ),
+    )
     percentage = allocate_percentage(synthesis_parameters)
+    LOG.info("Stage: select sources (allocations=%d)", len(percentage))
     source_selector = SourceSelector()
     sources = source_selector.select_source(percentage)
+    LOG.info("Stage: build transients (selections=%d)", len(sources))
     transients = build_transient_effect(synthesis_parameters, sources)
+    LOG.info("Stage: decorate dynamic effects (effects=%d)", len(transients))
     results = decorate_dynamic_effect(transients)
     try:
+        LOG.info(
+            "Stage: generate audio (duration_ms=%d, effects=%d)",
+            synthesis_parameters.duration,
+            len(results),
+        )
         manifests = generate_audio_data(results, synthesis_parameters.duration)
+        LOG.info("Stage: generate metadata (manifests=%d)", len(manifests))
         generate_metadata(synthesis_parameters, manifests)
     finally:
         cleanup_buildcache()

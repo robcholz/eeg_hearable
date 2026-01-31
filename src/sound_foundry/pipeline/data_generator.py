@@ -6,6 +6,7 @@ import tempfile
 import shutil
 import hashlib
 import math
+import logging
 
 from sound_foundry.version_control.version_control import get_current_data_folder
 
@@ -16,6 +17,8 @@ from sound_foundry.pipeline.transient_effect_builder import (
 )
 from sound_foundry.pipeline.util import get_build_cache_dir
 from sound_foundry.data_accessor.clip import Clip
+
+LOG = logging.getLogger("sound_foundry")
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +79,15 @@ def _normalize_clip_duration(clip: Clip, duration_seconds: float) -> Clip:
     if original_duration < duration_seconds:
         repeat_count = math.ceil(duration_seconds / original_duration)
         loop_count = max(repeat_count - 1, 0)
+        LOG.debug(
+            "Normalize clip (action=repeat, id=%s, label=%s, underlying=%s, original=%.3f, target=%.3f, loops=%d)",
+            clip.key,
+            clip.unified_label,
+            clip.underlying_label,
+            original_duration,
+            duration_seconds,
+            loop_count,
+        )
         cmd = [
             "ffmpeg",
             "-y",
@@ -93,6 +105,14 @@ def _normalize_clip_duration(clip: Clip, duration_seconds: float) -> Clip:
             str(out_path),
         ]
     else:
+        LOG.debug(
+            "Normalize clip (action=trim, id=%s, label=%s, underlying=%s, original=%.3f, target=%.3f)",
+            clip.key,
+            clip.unified_label,
+            clip.underlying_label,
+            original_duration,
+            duration_seconds,
+        )
         cmd = [
             "ffmpeg",
             "-y",
@@ -328,6 +348,11 @@ def generate_audio_data(
         transient_duration_seconds = (
             total_duration_seconds / transient_count if transient_count else 0
         )
+        LOG.debug(
+            "Per-clip durations (sources=%.3f, transients=%.3f)",
+            source_duration_seconds,
+            transient_duration_seconds,
+        )
         normalized_dynamic_effect = _normalize_dynamic_effects(
             [dynamic_effect], source_duration_seconds, transient_duration_seconds
         )[0]
@@ -340,6 +365,14 @@ def generate_audio_data(
             )
             for output_set in source_selection.outputs:
                 output_path = output_dir / f"{output_index:}.wav"
+                LOG.debug(
+                    "Generate file %d (sources=%d, transients=%d, source_dur=%.3f, transient_dur=%.3f)",
+                    output_index,
+                    len(output_set),
+                    len(transient_paths),
+                    source_duration_seconds,
+                    transient_duration_seconds,
+                )
                 _concat_wav_files((clip.path for clip in output_set), base_path)
                 _mix_transients(base_path, transient_paths, output_path)
                 manifests.append(

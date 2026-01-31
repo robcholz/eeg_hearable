@@ -6,15 +6,18 @@ import subprocess
 import tempfile
 import zipfile
 from typing import Optional
+import logging
 
 from huggingface_hub import hf_hub_download
 from huggingface_hub.errors import HfHubHTTPError
 
 from sound_foundry.utils import download_with_progress, get_cache_dir
 
+LOG = logging.getLogger("sound_foundry")
+
 
 def download_fsd50k(dataset: Path):
-    print("Start downloading fsd50k")
+    LOG.info("Start downloading fsd50k")
     repo_id = "Fhrozen/FSD50k"
     dev_path = "clips/dev"
     eval_path = "clips/eval"
@@ -56,12 +59,20 @@ def download_fsd50k(dataset: Path):
     dev_missing = _missing_files(target_dev, target_dev_csv)
     eval_missing = _missing_files(target_eval, target_eval_csv)
     if not dev_missing and not eval_missing:
-        print(f"FSD50K already exists: {target_root}")
+        LOG.info("FSD50K already exists: %s", target_root)
         return
     if dev_missing:
-        print(f"FSD50K dev missing {len(dev_missing)} files, e.g. {dev_missing[:5]}")
+        LOG.info(
+            "FSD50K dev missing %d files, e.g. %s",
+            len(dev_missing),
+            dev_missing[:5],
+        )
     if eval_missing:
-        print(f"FSD50K eval missing {len(eval_missing)} files, e.g. {eval_missing[:5]}")
+        LOG.info(
+            "FSD50K eval missing %d files, e.g. %s",
+            len(eval_missing),
+            eval_missing[:5],
+        )
 
     def _download_missing_files(
         missing: list[str], split_path: str, target_dir: Path
@@ -79,7 +90,7 @@ def download_fsd50k(dataset: Path):
             except HfHubHTTPError as exc:
                 status = getattr(exc, "status_code", None)
                 if status == 429:
-                    print("Rate limited downloading FSD50K; please rerun later.")
+                    LOG.warning("Rate limited downloading FSD50K; please rerun later.")
                 raise
             dest_path = target_dir / f"{fname}.wav"
             if not dest_path.exists():
@@ -99,7 +110,7 @@ def download_fsd50k(dataset: Path):
 
 
 def download_esc50(dataset: Path):
-    print("Start downloading esc50")
+    LOG.info("Start downloading esc50")
     repo_zip_url = "https://github.com/karolpiczak/ESC-50/archive/refs/heads/master.zip"
     output_dir = get_cache_dir()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -111,7 +122,7 @@ def download_esc50(dataset: Path):
     target_root.mkdir(parents=True, exist_ok=True)
     target_dev = target_root / "dev"
     if target_dev.exists():
-        print(f"Target already exists: {target_dev}")
+        LOG.info("Target already exists: %s", target_dev)
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -149,7 +160,7 @@ def _download_from_zenodo(
 
     target_root.mkdir(parents=True, exist_ok=True)
     if any(target_root.iterdir()):
-        print(f"Target already exists: {target_root}")
+        LOG.info("Target already exists: %s", target_root)
         return
 
     tmpdir_obj = None
@@ -197,7 +208,7 @@ def _postprocess_musdb18(dataset: Path):
     Args:
         dataset: Root path containing the already downloaded `musdb18` folder.
     """
-    print("Start postprocessing musdb18")
+    LOG.info("Start postprocessing musdb18")
 
     target_root = dataset / "musdb18"
     train_dataset = target_root / "train"
@@ -248,13 +259,13 @@ def _postprocess_musdb18(dataset: Path):
 
 
 def download_disco(dataset: Path):
-    print("Start downloading DISCO")
+    LOG.info("Start downloading DISCO")
     link = "https://zenodo.org/records/4019030/files/disco_noises.zip?download=1"
     _download_from_zenodo(dataset, "disco", "disco_noises.zip", link)
 
 
 def download_musdb18(dataset: Path):
-    print("Start downloading musdb18")
+    LOG.info("Start downloading musdb18")
     link = "https://zenodo.org/records/1117372/files/musdb18.zip?download=1"
     _download_from_zenodo(dataset, "musdb18", "musdb18.zip", link)
     _postprocess_musdb18(dataset)

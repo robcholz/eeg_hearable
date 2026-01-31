@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Sequence
+import logging
 
 from sound_foundry.data_accessor.clip import Clip, Label
 from sound_foundry.pipeline.source_selector import SourceSelectionResult, AudioSelector
@@ -7,6 +8,8 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import (
     SynthesisParameter,
     Partition,
 )
+
+LOG = logging.getLogger("sound_foundry")
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +42,13 @@ class _TransientSelector(AudioSelector):
         """
         results: list[TransientEffectBuildingResult] = []
         for source_selection in source_selections:
+            partition = source_selection.allocation_result.partition
+            LOG.info(
+                "Select transients (percentage=%.3f, n_sources=%d, n_transients=%d)",
+                partition.percentage,
+                partition.n_sources,
+                partition.n_transients,
+            )
             if synthesis_parameter.transient_effect is None:
                 labels: Sequence[Label] = ()
                 outputs: Sequence[Sequence[Clip]] = []
