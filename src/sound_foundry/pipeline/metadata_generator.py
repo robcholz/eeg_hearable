@@ -4,10 +4,11 @@ import json
 import shutil
 from dataclasses import asdict
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Any
 
 from sound_foundry.data_accessor.clip import Clip
 from sound_foundry.pipeline.data_generator import AudioManifest
+from sound_foundry.pipeline.dynamic_audio_decorator import BRIRYaw
 from sound_foundry.config import get_raw_dataset_path
 from sound_foundry.synthesis_parameter.synthesis_parameter import SynthesisParameter
 from sound_foundry.version_control.version_control import (
@@ -67,7 +68,7 @@ def generate_metadata(
                 ]
             )
 
-    data_map: dict[str, list[dict[str, object]]] = {"data": []}
+    data_map: dict[str, Any] = {"data": []}
     copy_original_files = build_parameter.export_options.copy_original_files
     dep_root = get_data_dep_folder() if copy_original_files else None
     raw_root = get_raw_dataset_path()
@@ -106,6 +107,14 @@ def generate_metadata(
             data["path"] = str(dst_path)
         return data
 
+    def _dynamic_clip_to_dict(
+        dynamic_clip: tuple[Clip, BRIRYaw],
+    ) -> dict[str, object]:
+        clip, angle = dynamic_clip
+        data = _clip_to_dict(clip)
+        data["brir_yaw"] = angle
+        return data
+
     effect_offsets: dict[int, int] = {}
     for manifest in manifests:
         data_id = manifest.file_id
@@ -128,12 +137,16 @@ def generate_metadata(
         transient_clips = transient_outputs[output_index] if transient_outputs else []
         dynamic_clips = dynamic_outputs[output_index] if dynamic_outputs else []
 
+        data_map["stero"] = build_parameter.dynamic_effect is not None
         data_map["data"].append(
             {
                 "id": data_id,
                 "source_clips": [_clip_to_dict(clip) for clip in source_clips],
                 "transient_clips": [_clip_to_dict(clip) for clip in transient_clips],
-                "dynamic_clips": [_clip_to_dict(clip) for clip in dynamic_clips],
+                "dynamic_clips": [
+                    _dynamic_clip_to_dict(dynamic_clip)
+                    for dynamic_clip in dynamic_clips
+                ],
             }
         )
 

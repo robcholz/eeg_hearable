@@ -1,6 +1,8 @@
 import logging
+import random
 from dataclasses import dataclass
-from typing import Sequence
+from enum import Enum
+from typing import Sequence, Tuple
 
 from sound_foundry.data_accessor.clip import Label, Clip
 from sound_foundry.pipeline.source_selector import AudioSelector
@@ -11,6 +13,8 @@ from sound_foundry.synthesis_parameter.synthesis_parameter import SynthesisParam
 
 LOG = logging.getLogger("sound_foundry")
 
+BRIRYaw = int
+
 
 @dataclass(frozen=True, slots=True)
 class DynamicEffectDecorationResult:
@@ -18,7 +22,7 @@ class DynamicEffectDecorationResult:
     labels: Sequence[Label]
     # first sequence is the number of audio files
     # second sequence is all the sources in that audio
-    outputs: Sequence[Sequence[Clip]]
+    outputs: Sequence[Sequence[Tuple[Clip, BRIRYaw]]]
 
 
 class _DynamicEffectSelector(AudioSelector):
@@ -51,13 +55,17 @@ class _DynamicEffectSelector(AudioSelector):
             )
             if synthesis_parameter.dynamic_effect is None:
                 labels: Sequence[Label] = ()
-                outputs: Sequence[Sequence[Clip]] = []
+                outputs: Sequence[Sequence[Tuple[Clip, BRIRYaw]]] = []
             else:
                 labels = synthesis_parameter.dynamic_effect.labels
-                outputs = super().select(
+                raw_outputs = super().select(
                     transient_effect.source_selection.allocation_result.actual_size,
                     labels,
                 )
+                outputs = [
+                    [(clip, random.randint(0, 359)) for clip in output_set]
+                    for output_set in raw_outputs
+                ]
 
             results.append(
                 DynamicEffectDecorationResult(
