@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Sequence, Optional
 
 from sound_foundry.config import get_raw_dataset_path
@@ -50,21 +49,17 @@ class TransientEffect:
     labels: Sequence[Label] = field(default_factory=tuple)
 
 
-class Effect(Enum):
-    REVERBERATION = "reverberation"
-    MULTI_PATH = "multi_path"
-
-
 @dataclass(frozen=True, slots=True)
 class DynamicEffect:
     """Dynamic effects applied to a partition or synthesis stage."""
 
-    effects: Sequence[Effect] = field(default_factory=tuple)
+    labels: Sequence[Label] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
 class ExportOption:
     copy_original_files: bool
+    preserve_non_dynamic_effect_output: bool
 
 
 @dataclass(frozen=True, slots=True)

@@ -283,3 +283,39 @@ class _DownloadDataTests(unittest.TestCase):
             result = get_audio_list_by_category(dataset_path, "fsd50k", "dog")
             expected = sorted(str(p) for p in [dev_dir / "1.wav", eval_dir / "2.wav"])
             self.assertEqual(expected, result)
+
+    def test_get_audio_categories_sbsbrir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset_path = Path(tmpdir)
+            root = dataset_path / "sbsbrir"
+            (root / "SBSBRIR_x-0pt5y-0pt5_wav").mkdir(parents=True)
+            (root / "SBSBRIR_x0y0_wav").mkdir(parents=True)
+            (root / "SBSBRIR_x1y-1_wav").mkdir(parents=True)
+            (root / "SBSBRIR_x-0pt5y-0pt5_wav" / "a.wav").write_text("data")
+            (root / "SBSBRIR_x0y0_wav" / "b.wav").write_text("data")
+            (root / "SBSBRIR_x1y-1_wav" / "c.wav").write_text("data")
+
+            categories = get_audio_categories(dataset_path, "sbsbrir")
+
+            self.assertEqual(
+                ["sbs_x-0.5_y-0.5", "sbs_x0.0_y0.0", "sbs_x1.0_y-1.0"],
+                categories,
+            )
+
+    def test_get_audio_list_by_category_sbsbrir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset_path = Path(tmpdir)
+            root = dataset_path / "sbsbrir"
+            folder = root / "SBSBRIR_x0pt5y-0pt5_wav"
+            wav_a = folder / "a.wav"
+            wav_b = folder / "nested" / "b.wav"
+            wav_b.parent.mkdir(parents=True, exist_ok=True)
+            wav_a.write_text("data")
+            wav_b.write_text("data")
+
+            result = get_audio_list_by_category(
+                dataset_path, "sbsbrir", "sbs_x0.5_y-0.5"
+            )
+            expected = sorted([str(wav_a), str(wav_b)])
+
+            self.assertEqual(expected, result)

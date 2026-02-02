@@ -5,8 +5,14 @@ import shutil
 import subprocess
 import tempfile
 import zipfile
+import tarfile
+import re
 from typing import Optional
 import logging
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlparse
+
+import requests
 
 from huggingface_hub import hf_hub_download
 from huggingface_hub.errors import HfHubHTTPError
@@ -14,6 +20,139 @@ from huggingface_hub.errors import HfHubHTTPError
 from sound_foundry.utils import download_with_progress, get_cache_dir
 
 LOG = logging.getLogger("sound_foundry")
+
+
+def download_sbsbrir(dataset: Path):
+    LOG.info("Start downloading sbsbrir")
+    base_url = "https://data.bbcarp.org.uk/sbsbrir/wav/"
+
+    class _LinkParser(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links: list[str] = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag != "a":
+                return
+            href = dict(attrs).get("href")
+            if href:
+                self.links.append(href)
+
+    response = requests.get(base_url, timeout=30)
+    response.raise_for_status()
+    parser = _LinkParser()
+    parser.feed(response.text)
+
+    links: list[str] = []
+    for href in parser.links:
+        if href.startswith("?") or href.startswith("#"):
+            continue
+        if href.endswith("/"):
+            continue
+        full_url = urljoin(base_url, href)
+        if not full_url.startswith(base_url):
+            continue
+        links.append(full_url)
+
+    if not links:
+        raise RuntimeError(f"No downloadable files found at {base_url}")
+
+    output_dir = get_cache_dir() / "sbsbrir"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _zip_valid(path: Path) -> bool:
+        try:
+            with zipfile.ZipFile(path) as zf:
+                return zf.testzip() is None
+        except zipfile.BadZipFile:
+            return False
+
+    def _tar_valid(path: Path) -> bool:
+        try:
+            with tarfile.open(path) as tf:
+                for _ in tf:
+                    pass
+            return True
+        except (tarfile.ReadError, EOFError):
+            return False
+
+    for url in sorted(set(links)):
+        filename = Path(urlparse(url).path).name
+        if not filename:
+            continue
+        dst = output_dir / filename
+        if dst.exists():
+            is_zip = zipfile.is_zipfile(dst)
+            is_tar = tarfile.is_tarfile(dst)
+            is_archive = is_zip or is_tar
+            is_valid = (
+                _zip_valid(dst) if is_zip else _tar_valid(dst) if is_tar else True
+            )
+            if (not is_archive) or is_valid:
+                LOG.info("File already exists: %s", dst)
+                continue
+            LOG.warning("Invalid archive detected, re-downloading: %s", dst)
+            dst.unlink()
+        LOG.info("Downloading %s", filename)
+        download_with_progress(url, dst)
+
+    target_root = dataset / "sbsbrir"
+    target_root.mkdir(parents=True, exist_ok=True)
+
+    for archive_path in sorted(output_dir.iterdir()):
+        if not archive_path.is_file():
+            continue
+        is_zip = zipfile.is_zipfile(archive_path)
+        is_tar = tarfile.is_tarfile(archive_path)
+        if not (is_zip or is_tar):
+            continue
+
+        if is_zip:
+            base_name = archive_path.stem
+        else:
+            suffixes = archive_path.suffixes
+            if len(suffixes) >= 2 and suffixes[-2:] == [".tar", ".gz"]:
+                base_name = archive_path.name[: -len("".join(suffixes[-2:]))]
+            elif len(suffixes) >= 2 and suffixes[-2:] == [".tar", ".bz2"]:
+                base_name = archive_path.name[: -len("".join(suffixes[-2:]))]
+            else:
+                base_name = archive_path.stem
+
+        extract_dir = target_root / base_name
+        if extract_dir.exists() and any(extract_dir.iterdir()):
+            LOG.info("Extracted files already exist: %s", extract_dir)
+            continue
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        LOG.info("Extracting %s -> %s", archive_path.name, extract_dir)
+        extracted = False
+        for attempt in range(2):
+            try:
+                if is_zip:
+                    with zipfile.ZipFile(archive_path) as zf:
+                        zf.extractall(extract_dir)
+                else:
+                    with tarfile.open(archive_path) as tf:
+                        tf.extractall(extract_dir)
+                extracted = True
+                break
+            except (zipfile.BadZipFile, tarfile.ReadError, EOFError) as exc:
+                LOG.warning(
+                    "Extraction failed for %s (attempt %d/2): %s",
+                    archive_path.name,
+                    attempt + 1,
+                    exc,
+                )
+                extract_dir.mkdir(parents=True, exist_ok=True)
+                if attempt == 0:
+                    archive_path.unlink(missing_ok=True)
+                    LOG.info("Re-downloading %s", archive_path.name)
+                    download_with_progress(
+                        urljoin(base_url, archive_path.name), archive_path
+                    )
+                    continue
+                raise
+        if not extracted:
+            raise RuntimeError(f"Failed to extract {archive_path.name}")
 
 
 def download_fsd50k(dataset: Path):
@@ -335,12 +474,56 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
                             categories.add(label)
         return sorted(categories)
 
+    def _sbsbrir_label_from_dir(name: str) -> Optional[str]:
+        match = re.match(r"^SBSBRIR_x(?P<x>[^y]+)y(?P<y>.+)_wav$", name)
+        if not match:
+            return None
+
+        def _format_coord(token: str) -> str:
+            return token.replace("pt", ".") if "pt" in token else f"{token}.0"
+
+        x_val = _format_coord(match.group("x"))
+        y_val = _format_coord(match.group("y"))
+        return f"sbs_x{x_val}_y{y_val}"
+
+    def _sbsbrir_entries(strict: bool) -> list[tuple[str, Path, list[Path]]]:
+        root = dataset_path / "sbsbrir"
+        if not root.exists():
+            if strict:
+                raise FileNotFoundError(f"Missing SBSBRIR directory: {root}")
+            LOG.warning("Missing SBSBRIR directory: %s", root)
+            return []
+
+        entries: list[tuple[str, Path, list[Path]]] = []
+        for entry in root.iterdir():
+            if not entry.is_dir():
+                continue
+            label = _sbsbrir_label_from_dir(entry.name)
+            if not label:
+                if strict:
+                    raise ValueError(f"Unknown SBSBRIR folder: {entry.name}")
+                LOG.warning("Skipping unknown SBSBRIR folder: %s", entry.name)
+                continue
+            wavs = sorted(entry.rglob("*.wav"))
+            if not wavs:
+                if strict:
+                    raise ValueError(f"SBSBRIR folder has no wav files: {entry}")
+                LOG.warning("Skipping SBSBRIR folder with no wav files: %s", entry)
+                continue
+            entries.append((label, entry, wavs))
+        return entries
+
+    def _sbsbrir_categories(strict: bool) -> list[str]:
+        entries = _sbsbrir_entries(strict)
+        return sorted({label for label, _entry, _wavs in entries})
+
     dataset_name = dataset.strip().lower() if dataset else None
     if dataset_name is None:
         combined = set(_esc50_categories())
         combined.update(_musdb_categories())
         combined.update(_disco_categories())
         combined.update(_fsd50k_categories())
+        combined.update(_sbsbrir_categories(strict=False))
         return sorted(combined)
 
     if dataset_name == "esc50":
@@ -355,8 +538,11 @@ def get_audio_categories(dataset_path: Path, dataset: Optional[str]) -> list[str
     if dataset_name == "fsd50k":
         return _fsd50k_categories()
 
+    if dataset_name == "sbsbrir":
+        return _sbsbrir_categories(strict=True)
+
     raise ValueError(
-        "Only esc50, musdb18, disco, and fsd50k are supported by get_audio_categories right now"
+        "Only esc50, musdb18, disco, fsd50k, and sbsbrir are supported by get_audio_categories right now"
     )
 
 
@@ -396,6 +582,43 @@ def get_audio_list_by_category(
                     )
         return matches
 
+    def _sbsbrir_label_from_dir(name: str) -> Optional[str]:
+        match = re.match(r"^SBSBRIR_x(?P<x>[^y]+)y(?P<y>.+)_wav$", name)
+        if not match:
+            return None
+
+        def _format_coord(token: str) -> str:
+            return token.replace("pt", ".") if "pt" in token else f"{token}.0"
+
+        x_val = _format_coord(match.group("x"))
+        y_val = _format_coord(match.group("y"))
+        return f"sbs_x{x_val}_y{y_val}"
+
+    def _sbsbrir_matches(label: str, strict: bool) -> list[str]:
+        root = dataset_path / "sbsbrir"
+        if not root.exists():
+            return []
+        results: list[str] = []
+        for entry in root.iterdir():
+            if not entry.is_dir():
+                continue
+            entry_label = _sbsbrir_label_from_dir(entry.name)
+            if not entry_label:
+                if strict:
+                    raise ValueError(f"Unknown SBSBRIR folder: {entry.name}")
+                LOG.warning("Skipping unknown SBSBRIR folder: %s", entry.name)
+                continue
+            if entry_label.lower() != label:
+                continue
+            wavs = sorted(entry.rglob("*.wav"))
+            if not wavs:
+                if strict:
+                    raise ValueError(f"SBSBRIR folder has no wav files: {entry}")
+                LOG.warning("Skipping SBSBRIR folder with no wav files: %s", entry)
+                continue
+            results.extend(str(p) for p in wavs)
+        return results
+
     dataset_name = dataset.strip().lower() if dataset else None
     if dataset_name is None:
         results: list[str] = []
@@ -428,6 +651,7 @@ def get_audio_list_by_category(
         eval_dir = fsd_root / "eval"
         results.extend(_fsd50k_matches(normalized_category, dev_csv, dev_dir))
         results.extend(_fsd50k_matches(normalized_category, eval_csv, eval_dir))
+        results.extend(_sbsbrir_matches(normalized_category, strict=False))
         return sorted(results)
 
     if dataset_name == "esc50":
@@ -480,8 +704,14 @@ def get_audio_list_by_category(
         results.extend(_fsd50k_matches(normalized_category, eval_csv, eval_dir))
         return sorted(results)
 
+    if dataset_name == "sbsbrir":
+        results = _sbsbrir_matches(normalized_category, strict=True)
+        if not results:
+            raise FileNotFoundError(f"Missing SBSBRIR category: {normalized_category}")
+        return results
+
     raise ValueError(
-        "Only esc50, musdb18, disco, and fsd50k are supported by get_audio_list_by_category right now"
+        "Only esc50, musdb18, disco, fsd50k, and sbsbrir are supported by get_audio_list_by_category right now"
     )
 
 
@@ -490,7 +720,7 @@ def get_all_dataset_name() -> list[str]:
     Returns:
         list of all dataset names
     """
-    return ["esc50", "musdb18", "disco", "fsd50k"]
+    return ["esc50", "musdb18", "disco", "fsd50k", "sbsbrir"]
 
 
 def download_data(dataset_path: Path):
@@ -498,3 +728,4 @@ def download_data(dataset_path: Path):
     download_musdb18(dataset_path)
     download_disco(dataset_path)
     download_fsd50k(dataset_path)
+    download_sbsbrir(dataset_path)

@@ -19,7 +19,9 @@ def _make_params(partitions, total_number=1, sources=None):
         duration=1000,
         partitions=partitions,
         sources=Sources(labels=sources_labels),
-        export_options=ExportOption(copy_original_files=False),
+        export_options=ExportOption(
+            copy_original_files=False, preserve_non_dynamic_effect_output=True
+        ),
     )
 
 
@@ -48,7 +50,9 @@ def test_verify_synthesis_parameter_rejects_non_positive_duration():
                 duration=0,
                 partitions=[Partition(percentage=1.0, n_sources=1, n_transients=0)],
                 sources=Sources(labels=("animal",)),
-                export_options=ExportOption(copy_original_files=False),
+                export_options=ExportOption(
+                    copy_original_files=False, preserve_non_dynamic_effect_output=True
+                ),
             )
         )
 
@@ -107,7 +111,9 @@ def test_verify_synthesis_parameter_rejects_too_many_transients():
         duration=1000,
         partitions=[Partition(percentage=1.0, n_sources=1, n_transients=2)],
         sources=Sources(labels=("animal",)),
-        export_options=ExportOption(copy_original_files=False),
+        export_options=ExportOption(
+            copy_original_files=False, preserve_non_dynamic_effect_output=True
+        ),
         transient_effect=TransientEffect(labels=("music",)),
     )
     with pytest.raises(ValueError, match="n_transients request"):
