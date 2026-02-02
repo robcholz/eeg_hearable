@@ -57,7 +57,13 @@ class _TransientSelector(AudioSelector):
                     synthesis_parameter=synthesis_parameter,
                     partition=source_selection.allocation_result.partition,
                 )
-                outputs = super().select(1, labels) if labels else []
+                outputs = (
+                    super().select(
+                        source_selection.allocation_result.actual_size, labels
+                    )
+                    if labels
+                    else []
+                )
 
             results.append(
                 TransientEffectBuildingResult(

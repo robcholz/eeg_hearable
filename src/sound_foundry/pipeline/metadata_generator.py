@@ -42,14 +42,8 @@ def generate_metadata(
     # generate a csv: column:
     csv_file_path = get_labels_file_path()  # may not exist
     csv_file_path.parent.mkdir(parents=True, exist_ok=True)
-    # columns: id(filename stem), source_labels, transient_labels, source_count, transient_count
-    header = [
-        "id",
-        "source_labels",
-        "transient_labels",
-        "source_count",
-        "transient_count",
-    ]
+    # columns: id(filename stem), source_labels, transient_labels, source_count, transient_count, dynamic_labels
+    header = ["id", "source_labels", "transient_labels", "dynamic_labels"]
     with csv_file_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(header)
@@ -60,15 +54,16 @@ def generate_metadata(
                 manifest.dynamic_effect.transient_effect.source_selection.allocation_result.labels
             )
             transient_labels = manifest.dynamic_effect.transient_effect.labels
-            source_count = len(source_labels)
-            transient_count = len(transient_labels)
+            if manifest.dynamic_effect is not None:
+                dynamic_labels = manifest.dynamic_effect.labels
+            else:
+                dynamic_labels = []
             writer.writerow(
                 [
                     data_id,
                     ",".join(source_labels),
                     ",".join(transient_labels),
-                    source_count,
-                    transient_count,
+                    ",".join(dynamic_labels),
                 ]
             )
 
@@ -117,6 +112,7 @@ def generate_metadata(
         transient_effect = manifest.dynamic_effect.transient_effect
         source_outputs = transient_effect.source_selection.outputs
         transient_outputs = transient_effect.outputs
+        dynamic_outputs = manifest.dynamic_effect.outputs
 
         effect_id = id(manifest.dynamic_effect)
         output_index = effect_offsets.get(effect_id, 0)
@@ -129,15 +125,15 @@ def generate_metadata(
             )
 
         source_clips = source_outputs[output_index] if source_outputs else []
-        transient_clips = [
-            clip for output_set in transient_outputs for clip in output_set
-        ]
+        transient_clips = transient_outputs[output_index] if transient_outputs else []
+        dynamic_clips = dynamic_outputs[output_index] if dynamic_outputs else []
 
         data_map["data"].append(
             {
                 "id": data_id,
                 "source_clips": [_clip_to_dict(clip) for clip in source_clips],
                 "transient_clips": [_clip_to_dict(clip) for clip in transient_clips],
+                "dynamic_clips": [_clip_to_dict(clip) for clip in dynamic_clips],
             }
         )
 

@@ -194,7 +194,11 @@ def _normalize_dynamic_effects(
             outputs=normalized_transient.outputs,
         )
         normalized.append(
-            DynamicEffectDecorationResult(transient_effect=normalized_transient)
+            DynamicEffectDecorationResult(
+                transient_effect=normalized_transient,
+                labels=dynamic_effect.labels,
+                outputs=dynamic_effect.outputs,
+            )
         )
     return normalized
 
@@ -360,16 +364,30 @@ def generate_audio_data(
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             base_path = tmp_path / "base.wav"
-            transient_paths = _render_transient_effects(
-                normalized_dynamic_effect.transient_effect.outputs, tmp_path
+            normalized_transient_outputs = (
+                normalized_dynamic_effect.transient_effect.outputs
             )
-            for output_set in source_selection.outputs:
+            for output_local_index, output_set in enumerate(source_selection.outputs):
                 output_path = output_dir / f"{output_index:}.wav"
+                transient_output_set = (
+                    normalized_transient_outputs[output_local_index]
+                    if output_local_index < len(normalized_transient_outputs)
+                    else []
+                )
+                dynamic_output_set = (
+                    normalized_dynamic_effect.outputs[output_local_index]
+                    if output_local_index < len(normalized_dynamic_effect.outputs)
+                    else []
+                )
+                transient_paths = _render_transient_effects(
+                    [transient_output_set], tmp_path
+                )
                 LOG.debug(
-                    "Generate file %d (sources=%d, transients=%d, source_dur=%.3f, transient_dur=%.3f)",
+                    "Generate file %d (sources=%d, transients=%d, dynamic=%d, source_dur=%.3f, transient_dur=%.3f)",
                     output_index,
                     len(output_set),
-                    len(transient_paths),
+                    len(transient_output_set),
+                    len(dynamic_output_set),
                     source_duration_seconds,
                     transient_duration_seconds,
                 )

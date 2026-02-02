@@ -42,5 +42,9 @@
       "tools_and_machines"
     ]
   },
-  "dynamic_effect": null
+  "dynamic_effect": {
+    "labels": [
+      "sbs_x1.0_y-1.0"
+    ]
+  }
 }

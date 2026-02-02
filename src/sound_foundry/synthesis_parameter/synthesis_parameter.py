@@ -50,16 +50,11 @@ class TransientEffect:
     labels: Sequence[Label] = field(default_factory=tuple)
 
 
-class Effect(Enum):
-    REVERBERATION = "reverberation"
-    MULTI_PATH = "multi_path"
-
-
 @dataclass(frozen=True, slots=True)
 class DynamicEffect:
     """Dynamic effects applied to a partition or synthesis stage."""
 
-    effects: Sequence[Effect] = field(default_factory=tuple)
+    labels: Sequence[Label] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)

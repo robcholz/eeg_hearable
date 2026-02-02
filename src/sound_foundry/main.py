@@ -81,7 +81,7 @@ def main():
     LOG.info("Stage: build transients (selections=%d)", len(sources))
     transients = build_transient_effect(synthesis_parameters, sources)
     LOG.info("Stage: decorate dynamic effects (effects=%d)", len(transients))
-    results = decorate_dynamic_effect(transients)
+    results = decorate_dynamic_effect(synthesis_parameters, transients)
     try:
         LOG.info(
             "Stage: generate audio (duration_ms=%d, effects=%d)",
