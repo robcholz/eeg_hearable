@@ -322,6 +322,22 @@ _ORIGINAL_MAP: Mapping[str, List[str]] = {
         "audio-rest",
         "audio-vocal",
     ],
+    # -------- BRIR meta --------
+    "sbs_x-0.5_y-0.5": ["sbs_x-0.5_y-0.5"],
+    "sbs_x-0.5_y-1.0": ["sbs_x-0.5_y-1.0"],
+    "sbs_x-0.5_y0.0": ["sbs_x-0.5_y0.0"],
+    "sbs_x-1.0_y-0.5": ["sbs_x-1.0_y-0.5"],
+    "sbs_x-1.0_y-1.0": ["sbs_x-1.0_y-1.0"],
+    "sbs_x-1.0_y0.0": ["sbs_x-1.0_y0.0"],
+    "sbs_x0.0_y-0.5": ["sbs_x0.0_y-0.5"],
+    "sbs_x0.0_y-1.0": ["sbs_x0.0_y-1.0"],
+    "sbs_x0.0_y0.0": ["sbs_x0.0_y0.0"],
+    "sbs_x0.5_y-0.5": ["sbs_x0.5_y-0.5"],
+    "sbs_x0.5_y-1.0": ["sbs_x0.5_y-1.0"],
+    "sbs_x0.5_y0.0": ["sbs_x0.5_y0.0"],
+    "sbs_x1.0_y-0.5": ["sbs_x1.0_y-0.5"],
+    "sbs_x1.0_y-1.0": ["sbs_x1.0_y-1.0"],
+    "sbs_x1.0_y0.0": ["sbs_x1.0_y0.0"],
 }
 
 # do not edit this

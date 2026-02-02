@@ -1,0 +1,46 @@
+{
+  "total_number": 400,
+  "duration": 3000,
+  "partitions": [
+    {
+      "percentage": 0.3,
+      "n_sources": 2,
+      "n_transients": 2
+    },
+    {
+      "percentage": 0.3,
+      "n_sources": 3,
+      "n_transients": 2
+    },
+    {
+      "percentage": 0.2,
+      "n_sources": 2,
+      "n_transients": 0
+    },
+    {
+      "percentage": 0.2,
+      "n_sources": 3,
+      "n_transients": 0
+    }
+  ],
+  "sources": {
+    "labels": [
+      "human_voice",
+      "animal",
+      "impacts",
+      "music",
+      "weather",
+      "alerts"
+    ]
+  },
+  "export_options": {
+    "copy_original_files": true
+  },
+  "transient_effect": {
+    "labels": [
+      "domestic_and_objects",
+      "tools_and_machines"
+    ]
+  },
+  "dynamic_effect": null
+}
