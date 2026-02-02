@@ -1,7 +1,6 @@
 import logging
 import random
 from dataclasses import dataclass
-from enum import Enum
 from typing import Sequence, Tuple
 
 from sound_foundry.data_accessor.clip import Label, Clip

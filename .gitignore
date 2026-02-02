@@ -8,3 +8,5 @@ out.prof
 htmlcov/
 .coverage
 output_dataset/
+scripts/brir_stereo.wav
+scripts/convolved.wav

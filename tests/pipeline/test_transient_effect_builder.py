@@ -32,7 +32,9 @@ def _make_params(
         duration=1000,
         partitions=[Partition(percentage=1.0, n_sources=2, n_transients=n_transients)],
         sources=Sources(labels=("a", "b")),
-        export_options=ExportOption(copy_original_files=False),
+        export_options=ExportOption(
+            copy_original_files=False, preserve_non_dynamic_effect_output=True
+        ),
         transient_effect=(
             TransientEffect(labels=transient_labels)
             if transient_labels is not None
@@ -74,10 +76,9 @@ def test_build_transient_effect_selects_single_audio(monkeypatch: pytest.MonkeyP
     assert len(results) == 1
     assert results[0].source_selection.allocation_result is allocation
     assert results[0].labels == transient_labels
-    assert len(results[0].outputs) == 1
-    assert [clip.unified_label for clip in results[0].outputs[0]] == list(
-        transient_labels
-    )
+    assert len(results[0].outputs) == allocation.actual_size
+    for output_set in results[0].outputs:
+        assert [clip.unified_label for clip in output_set] == list(transient_labels)
 
 
 def test_build_transient_effect_overlap_reuses_labels(

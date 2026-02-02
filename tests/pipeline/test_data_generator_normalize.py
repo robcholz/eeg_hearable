@@ -125,8 +125,14 @@ def test_generate_audio_data_computes_per_clip_durations(
     transient_effect = TransientEffectBuildingResult(
         source_selection=selection, labels=("t1", "t2"), outputs=transient_outputs
     )
-    dynamic_effect = DynamicEffectDecorationResult(transient_effect=transient_effect)
+    dynamic_effect = DynamicEffectDecorationResult(
+        transient_effect=transient_effect, labels=(), outputs=()
+    )
 
-    data_generator.generate_audio_data([dynamic_effect], total_duration_ms=1000)
+    data_generator.generate_audio_data(
+        [dynamic_effect],
+        total_duration_ms=1000,
+        preserve_non_dynamic_effect_output=True,
+    )
 
     assert durations == [(0.25, 0.5)]

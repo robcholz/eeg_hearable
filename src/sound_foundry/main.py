@@ -88,7 +88,11 @@ def main():
             synthesis_parameters.duration,
             len(results),
         )
-        manifests = generate_audio_data(results, synthesis_parameters.duration)
+        manifests = generate_audio_data(
+            results,
+            synthesis_parameters.duration,
+            synthesis_parameters.export_options.preserve_non_dynamic_effect_output,
+        )
         LOG.info("Stage: generate metadata (manifests=%d)", len(manifests))
         generate_metadata(synthesis_parameters, manifests)
     finally:

@@ -34,7 +34,8 @@
     ]
   },
   "export_options": {
-    "copy_original_files": true
+    "copy_original_files": true,
+    "preserve_non_dynamic_effect_output": false
   },
   "transient_effect": {
     "labels": [

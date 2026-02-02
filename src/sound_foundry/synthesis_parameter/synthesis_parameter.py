@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Sequence, Optional
 
 from sound_foundry.config import get_raw_dataset_path
@@ -60,6 +59,7 @@ class DynamicEffect:
 @dataclass(frozen=True, slots=True)
 class ExportOption:
     copy_original_files: bool
+    preserve_non_dynamic_effect_output: bool
 
 
 @dataclass(frozen=True, slots=True)

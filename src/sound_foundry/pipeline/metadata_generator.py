@@ -137,7 +137,7 @@ def generate_metadata(
         transient_clips = transient_outputs[output_index] if transient_outputs else []
         dynamic_clips = dynamic_outputs[output_index] if dynamic_outputs else []
 
-        data_map["stero"] = build_parameter.dynamic_effect is not None
+        data_map["stereo"] = build_parameter.dynamic_effect is not None
         data_map["data"].append(
             {
                 "id": data_id,

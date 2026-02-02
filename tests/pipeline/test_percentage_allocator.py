@@ -18,7 +18,9 @@ def _make_params(partitions, total_number=10, labels=None):
         duration=1000,
         partitions=partitions,
         sources=Sources(labels=tuple(labels or ())),
-        export_options=ExportOption(copy_original_files=False),
+        export_options=ExportOption(
+            copy_original_files=False, preserve_non_dynamic_effect_output=True
+        ),
     )
 
 
