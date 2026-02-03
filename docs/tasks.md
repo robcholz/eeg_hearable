@@ -6,4 +6,4 @@
 4. [x] add reverberations.
 5. [x] add multipath effect on mixed sounds to generate sounds for left ear and right ear separately.
 6. [x] fixed bug in transient effect builder.
-7. [ ] add commit changes to `changes` field in `metadata.json`.
+7. [x] add commit changes to `changes` field in `metadata.json`.

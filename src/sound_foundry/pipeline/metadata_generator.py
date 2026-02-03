@@ -20,6 +20,7 @@ from sound_foundry.version_control.version_control import (
     get_version_name,
     get_original_data_map,
     get_data_dep_folder,
+    get_git_all_commits_since_last_merge,
 )
 
 
@@ -35,6 +36,9 @@ def generate_metadata(
         "checksum": get_checksum(),
         "datetime_utc": get_datetime(),
         "build_params": asdict(build_parameter),
+        "changes": [
+            asdict(commit) for commit in get_git_all_commits_since_last_merge()
+        ],
     }
 
     with metadata_file_path.open("w", encoding="utf-8") as f:
