@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 
 from sound_foundry.config import get_output_dataset_path
 from sound_foundry.utils import get_project_root
@@ -69,6 +71,46 @@ def get_git_ref() -> str:
     if result.returncode != 0:
         raise RuntimeError(f"git rev-parse failed: {result.stderr.strip()}")
     return result.stdout.strip()
+
+
+@dataclass(frozen=True, slots=True)
+class GitCommit:
+    ref: str
+    description: str
+
+
+def get_git_all_commits_since_last_merge() -> Sequence[GitCommit]:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "rev-list", "--merges", "-n", "1", "HEAD"],
+        cwd=str(get_project_root()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"git rev-list failed: {result.stderr.strip()}")
+    last_merge = result.stdout.strip()
+
+    log_range = [f"{last_merge}..HEAD"] if last_merge else ["HEAD"]
+    result = subprocess.run(
+        ["git", "log", "--reverse", "--pretty=%H%x1f%s", *log_range],
+        cwd=str(get_project_root()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"git log failed: {result.stderr.strip()}")
+
+    commits: list[GitCommit] = []
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        ref, description = line.split("\x1f", 1)
+        commits.append(GitCommit(ref=ref, description=description))
+    return commits
 
 
 def get_version_name() -> str:
